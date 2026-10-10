@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+*.egg-info/
+
+# Secrets / local env
+.env
+.env.*
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Claude Code
+.claude/
+
+# Regenerable pilot outputs (see docs/SYSTEM-DESIGN.md)
+results/sft_cache/
+results/runs_quick/
+results/summary_quick.json
+inputs/*.pdf

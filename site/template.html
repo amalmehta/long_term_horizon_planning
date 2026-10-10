@@ -1,0 +1,642 @@
+<title>Rewarding What You Can't Verify</title>
+<meta name="description" content="A long-horizon post-training research program for agents whose verifiable reward (build, regression, equivalence) is narrower than correctness, with a reproducible toy pilot.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column (~68ch) with wide breakouts for the diff and the charts.
+   The page's motif is the coverage gutter: a thin left margin that marks what the tests reach. */
+:root {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --ink: #12151c;
+  --ink-2: #4b5161;
+  --ink-3: #7a8091;
+  --rule: #dfe2e8;
+  --accent: #2f4bd8;
+  --accent-soft: #e6eafc;
+
+  /* outcomes: honest (aqua), merely plausible (violet), hacks (red family), no build (neutral) */
+  --o-correct: #1baf7a;
+  --o-plausible: #7b6fd6;
+  --o-stubbed: #f08a5d;
+  --o-deleted: #b3261e;
+  --o-buildfail: #c9ccd3;
+  /* signals: what the verifier sees (blue) vs. what is true (aqua) */
+  --s-visible: #2a78d6;
+  --s-true: #1baf7a;
+  --s-gap: rgba(179, 38, 30, 0.12);
+  /* reward families: proxy-only (warm) vs audited (blue ramp) */
+  --r-visible: #b3261e;
+  --r-audit: #2a78d6;
+
+  /* tag families: verification (blue), long horizon (green), evaluation (amber) */
+  --t-ver-1: #dbe7fb; --t-ver-1-ink: #1c4f95;
+  --t-ver-2: #b9d0f6; --t-ver-2-ink: #143f7a;
+  --t-ver-3: #8fb3ee; --t-ver-3-ink: #0d2f61;
+  --t-lh-1: #d6f0dc; --t-lh-1-ink: #1d6b33;
+  --t-lh-2: #ade2b9; --t-lh-2-ink: #145426;
+  --t-lh-3: #7fcd92; --t-lh-3-ink: #0c3f1b;
+  --t-ev-1: #fbe9c6; --t-ev-1-ink: #7a4b00;
+  --t-ev-2: #f5d38f; --t-ev-2-ink: #5e3a00;
+
+  --code-bg: #f7f8fa;
+  --del-bg: #fde8e6;
+  --del-ink: #8e1d17;
+  --cov-hit: #1baf7a;
+  --cov-miss: #e2e4ea;
+
+  --f-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Source Serif 4", "Iowan Old Style", Georgia, serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1217; --surface: #161a21; --ink: #eceef3; --ink-2: #b4b9c6; --ink-3: #868c9b;
+    --rule: #2a2f3a; --accent: #8fa2ff; --accent-soft: #1d2440;
+    --o-correct: #199e70; --o-plausible: #9085e9; --o-stubbed: #dc7448; --o-deleted: #a8322b; --o-buildfail: #3b404b;
+    --s-visible: #3987e5; --s-true: #199e70; --s-gap: rgba(230, 103, 103, 0.16);
+    --r-visible: #e66767; --r-audit: #3987e5;
+    --t-ver-1: #16294a; --t-ver-1-ink: #a9c6f5; --t-ver-2: #1d3766; --t-ver-2-ink: #c3d7f8; --t-ver-3: #284a85; --t-ver-3-ink: #dde8fb;
+    --t-lh-1: #132e1b; --t-lh-1-ink: #9fdcae; --t-lh-2: #1a4426; --t-lh-2-ink: #bfe8c8; --t-lh-3: #245b33; --t-lh-3-ink: #dbf3e0;
+    --t-ev-1: #3a2a08; --t-ev-1-ink: #f2cf86; --t-ev-2: #54400f; --t-ev-2-ink: #f8e2b0;
+    --code-bg: #12161c; --del-bg: #3a1614; --del-ink: #f2a39c; --cov-hit: #199e70; --cov-miss: #2a2f3a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1217; --surface: #161a21; --ink: #eceef3; --ink-2: #b4b9c6; --ink-3: #868c9b;
+  --rule: #2a2f3a; --accent: #8fa2ff; --accent-soft: #1d2440;
+  --o-correct: #199e70; --o-plausible: #9085e9; --o-stubbed: #dc7448; --o-deleted: #a8322b; --o-buildfail: #3b404b;
+  --s-visible: #3987e5; --s-true: #199e70; --s-gap: rgba(230, 103, 103, 0.16);
+  --r-visible: #e66767; --r-audit: #3987e5;
+  --t-ver-1: #16294a; --t-ver-1-ink: #a9c6f5; --t-ver-2: #1d3766; --t-ver-2-ink: #c3d7f8; --t-ver-3: #284a85; --t-ver-3-ink: #dde8fb;
+  --t-lh-1: #132e1b; --t-lh-1-ink: #9fdcae; --t-lh-2: #1a4426; --t-lh-2-ink: #bfe8c8; --t-lh-3: #245b33; --t-lh-3-ink: #dbf3e0;
+  --t-ev-1: #3a2a08; --t-ev-1-ink: #f2cf86; --t-ev-2: #54400f; --t-ev-2-ink: #f8e2b0;
+  --code-bg: #12161c; --del-bg: #3a1614; --del-ink: #f2a39c; --cov-hit: #199e70; --cov-miss: #2a2f3a;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 400 1.0625rem/1.65 var(--f-body);
+  padding-inline: 16px; padding-block: 0 64px;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1040px; margin-inline: auto; }
+.col { max-width: 68ch; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; letter-spacing: -0.01em; color: var(--ink); }
+h1 { font-size: clamp(2.3rem, 5.5vw, 3.9rem); line-height: 1.02; font-weight: 700; margin: 0; }
+h2 { font-size: clamp(1.6rem, 3vw, 2.1rem); line-height: 1.12; font-weight: 700; margin: 0 0 0.6rem; }
+h3 { font-size: 1.15rem; line-height: 1.25; font-weight: 700; margin: 0; }
+p { margin: 0; }
+.stack { display: flex; flex-direction: column; gap: 1rem; }
+.eyebrow { font: 600 0.72rem/1.2 var(--f-mono); letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-3); }
+.lede { font-size: 1.25rem; line-height: 1.5; color: var(--ink-2); }
+a { color: var(--accent); text-underline-offset: 2px; }
+a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+code, .mono { font-family: var(--f-mono); font-size: 0.86em; }
+.num { font-variant-numeric: tabular-nums; }
+strong { font-weight: 600; }
+
+/* top bar */
+.top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding-block: 20px; border-bottom: 1px solid var(--rule); }
+.top nav { display: flex; gap: 18px; flex-wrap: wrap; font: 500 0.85rem var(--f-display); }
+.top nav a { color: var(--ink-2); text-decoration: none; }
+.top nav a:hover { color: var(--ink); }
+.mark { font: 700 0.95rem var(--f-display); }
+
+section { padding-block: 64px 0; }
+section + section { border-top: 1px solid var(--rule); margin-top: 64px; }
+
+/* hero */
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 48px; align-items: center; padding-block: 56px 0; }
+.hero > * { min-width: 0; }
+.byline { font: 500 0.9rem var(--f-display); color: var(--ink-2); }
+@media (max-width: 880px) { .hero { grid-template-columns: 1fr; gap: 32px; } }
+
+/* the diff */
+.diff { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+.diff-head { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid var(--rule); font: 500 0.75rem var(--f-mono); color: var(--ink-3); }
+.diff-body { overflow-x: auto; background: var(--code-bg); }
+.diff pre { margin: 0; font: 400 0.8rem/1.75 var(--f-mono); min-width: max-content; display: flex; flex-direction: column; }
+.ln { display: grid; grid-template-columns: 6px 22px 1fr; padding-right: 16px; }
+.ln .cov { background: var(--cov-miss); }
+.ln.hit .cov { background: var(--cov-hit); }
+.ln .sign { text-align: center; color: var(--ink-3); }
+.ln.del { background: var(--del-bg); color: var(--del-ink); }
+.ln.del .sign { color: var(--del-ink); }
+.diff-foot { display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 12px 14px; border-top: 1px solid var(--rule); font: 500 0.78rem var(--f-mono); }
+.pass { color: var(--o-correct); }
+.diff-foot .verdict { color: var(--ink-2); flex-basis: 100%; font-family: var(--f-body); font-size: 0.92rem; font-style: italic; }
+.cov-key { display: flex; gap: 14px; font: 500 0.72rem var(--f-mono); color: var(--ink-3); padding: 8px 14px; border-top: 1px solid var(--rule); flex-wrap: wrap; }
+.cov-key i { display: inline-block; width: 6px; height: 12px; vertical-align: -2px; margin-right: 6px; }
+
+/* boundary ladder */
+.ladder { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; margin-top: 28px; border-radius: 10px; overflow: hidden; }
+.rung { background: var(--surface); padding: 18px 16px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.rung .k { font: 600 0.7rem var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; }
+.rung.v .k { color: var(--s-visible); }
+.rung.u { background: repeating-linear-gradient(135deg, var(--surface) 0 8px, var(--bg) 8px 9px); }
+.rung.u .k { color: var(--o-deleted); }
+.rung p { font-size: 0.92rem; line-height: 1.45; color: var(--ink-2); }
+.boundary-label { display: flex; justify-content: space-between; font: 500 0.75rem var(--f-mono); color: var(--ink-3); margin-top: 8px; gap: 8px; }
+@media (max-width: 720px) { .ladder { grid-template-columns: 1fr 1fr; } }
+
+/* pilot facts */
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 24px; margin-top: 28px; }
+.fact { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.fact .k { font: 600 0.7rem var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.fact p { font-size: 0.95rem; line-height: 1.5; color: var(--ink-2); }
+
+/* figures */
+.fig { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 20px 20px 14px; margin-top: 28px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.fig-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.fig-head > div { min-width: 0; max-width: 62ch; }
+.fig-head p { font-size: 0.95rem; color: var(--ink-2); margin-top: 4px; }
+.fig-n { font: 600 0.72rem var(--f-mono); color: var(--ink-3); letter-spacing: 0.08em; text-transform: uppercase; }
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart.wide { overflow-x: auto; }
+.chart.wide svg { min-width: 680px; }
+.chart text { font-family: var(--f-mono); font-size: 11px; fill: var(--ink-3); }
+.chart .lbl { fill: var(--ink); font-weight: 600; }
+.chart .grid { stroke: var(--rule); stroke-width: 1; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font: 500 0.78rem var(--f-mono); color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.legend i.line { height: 3px; border-radius: 2px; }
+.legend i.gap { background: var(--s-gap); border: 1px dashed var(--o-deleted); }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; flex-wrap: wrap; }
+.seg button { font: 500 0.78rem var(--f-display); background: var(--surface); color: var(--ink-2); border: 0; padding: 7px 11px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--rule); }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--ink); }
+.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); font: 500 0.75rem/1.45 var(--f-mono); padding: 8px 10px; border-radius: 6px; white-space: nowrap; z-index: 2; transform: translate(-50%, calc(-100% - 10px)); }
+.tip[hidden] { display: none !important; }
+.tip b { font-weight: 600; }
+.note { font-size: 0.9rem; color: var(--ink-2); border-left: 2px solid var(--rule); padding-left: 12px; }
+details.table { font-size: 0.85rem; }
+details.table summary { cursor: pointer; font: 500 0.78rem var(--f-mono); color: var(--ink-3); }
+.tbl { overflow-x: auto; margin-top: 8px; }
+.tbl table { border-collapse: collapse; font: 400 0.78rem var(--f-mono); font-variant-numeric: tabular-nums; min-width: 100%; }
+.tbl th, .tbl td { text-align: right; padding: 5px 10px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+.tbl th:first-child, .tbl td:first-child { text-align: left; }
+.tbl th { color: var(--ink-3); font-weight: 600; }
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+.two > .fig { margin-top: 0; }
+@media (max-width: 820px) { .two { grid-template-columns: 1fr; } }
+
+/* findings */
+.findings { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 28px; margin-top: 32px; }
+.finding { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.finding .big { font: 700 2.1rem/1 var(--f-display); font-variant-numeric: tabular-nums; }
+.finding p { font-size: 0.95rem; color: var(--ink-2); }
+
+/* roadmap */
+.timeline { margin-top: 32px; overflow-x: auto; }
+.tl { min-width: 760px; display: grid; grid-template-columns: 250px repeat(18, minmax(0, 1fr)); row-gap: 6px; font: 500 0.75rem var(--f-mono); color: var(--ink-3); }
+.tl .m { text-align: center; border-left: 1px solid var(--rule); padding-bottom: 4px; }
+.tl .name { color: var(--ink-2); padding-right: 10px; align-self: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tl .bar { height: 18px; border-radius: 4px; align-self: center; }
+.phases { display: flex; flex-direction: column; gap: 0; margin-top: 36px; }
+.phase { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 28px; padding-block: 28px; border-top: 1px solid var(--rule); }
+.phase .when { display: flex; flex-direction: column; gap: 6px; }
+.phase .when .p { font: 700 0.85rem var(--f-display); }
+.phase .when .t { font: 500 0.78rem var(--f-mono); color: var(--ink-3); }
+.phase .body { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.phase .q { font-size: 1.1rem; font-style: italic; color: var(--ink); }
+.phase dl { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 8px 16px; margin: 0; font-size: 0.95rem; }
+.phase dt { font: 600 0.7rem/1.9 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.phase dd { margin: 0; color: var(--ink-2); }
+.phase dd.kill { color: var(--ink); }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag { font: 500 0.72rem var(--f-mono); padding: 3px 8px; border-radius: 999px; }
+.tag.ver-1 { background: var(--t-ver-1); color: var(--t-ver-1-ink); }
+.tag.ver-2 { background: var(--t-ver-2); color: var(--t-ver-2-ink); }
+.tag.ver-3 { background: var(--t-ver-3); color: var(--t-ver-3-ink); }
+.tag.lh-1 { background: var(--t-lh-1); color: var(--t-lh-1-ink); }
+.tag.lh-2 { background: var(--t-lh-2); color: var(--t-lh-2-ink); }
+.tag.lh-3 { background: var(--t-lh-3); color: var(--t-lh-3-ink); }
+.tag.ev-1 { background: var(--t-ev-1); color: var(--t-ev-1-ink); }
+.tag.ev-2 { background: var(--t-ev-2); color: var(--t-ev-2-ink); }
+.status { font: 600 0.7rem var(--f-mono); padding: 2px 8px; border-radius: 4px; border: 1px solid var(--o-correct); color: var(--o-correct); align-self: flex-start; }
+@media (max-width: 720px) {
+  .phase { grid-template-columns: 1fr; gap: 12px; }
+  .phase dl { grid-template-columns: 1fr; gap: 2px; }
+  .phase dd { margin-bottom: 8px; }
+}
+
+/* principles & limits */
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 28px 40px; margin-top: 28px; }
+.cols > div { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.cols p { font-size: 0.95rem; color: var(--ink-2); }
+ul.plain { margin: 0; padding-left: 1.1em; display: flex; flex-direction: column; gap: 8px; color: var(--ink-2); }
+pre.cmd { background: var(--code-bg); border: 1px solid var(--rule); border-radius: 8px; padding: 14px 16px; overflow-x: auto; font: 400 0.82rem/1.7 var(--f-mono); margin: 0; }
+footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--rule); font: 500 0.8rem var(--f-mono); color: var(--ink-3); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <span class="mark">Rewarding What You Can't Verify</span>
+    <nav aria-label="Sections">
+      <a href="#boundary">The boundary</a>
+      <a href="#pilot">Pilot</a>
+      <a href="#roadmap">Roadmap</a>
+      <a href="#how">How I'd run it</a>
+      <a href="#reproduce">Reproduce</a>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <div class="stack">
+      <span class="eyebrow">Research proposal · Post-training for long-horizon agents</span>
+      <h1>Rewarding what you can't verify</h1>
+      <p class="lede">An 18-month research program for post-training code agents when the checks you can run (it builds, it passes regression, it behaves equivalently on tested inputs) are narrower than the thing you want: a change that is correct.</p>
+      <p class="byline">Amal Mehta · October 2026 · written for Tessera Labs</p>
+    </div>
+    <figure class="diff" aria-label="Example: a diff that deletes an untested branch and still passes every check">
+      <div class="diff-head"><span>pricing/shipping.py</span><span>agent patch · step 31 of 40</span></div>
+      <div class="diff-body"><pre><span class="ln hit"><span class="cov"></span><span class="sign"> </span><span> def shipping_rate(order):</span></span>
+<span class="ln hit"><span class="cov"></span><span class="sign"> </span><span>     if order.region == "US":</span></span>
+<span class="ln hit"><span class="cov"></span><span class="sign"> </span><span>         return domestic_rate(order)</span></span>
+<span class="ln del"><span class="cov"></span><span class="sign">−</span><span>     elif order.region == "EU":</span></span>
+<span class="ln del"><span class="cov"></span><span class="sign">−</span><span>         return eu_rate(order, vat=VAT[order.country])</span></span>
+<span class="ln hit"><span class="cov"></span><span class="sign"> </span><span>     return flat_rate(order)</span></span></pre></div>
+      <div class="cov-key"><span><i style="background:var(--cov-hit)"></i>reached by tests</span><span><i style="background:var(--cov-miss)"></i>not reached</span></div>
+      <div class="diff-foot">
+        <span class="pass">✓ build</span><span class="pass">✓ regression 214 / 214</span><span class="pass">✓ equivalent on tested inputs</span>
+        <span class="verdict">Every check is green. EU orders now ship at the flat rate.</span>
+      </div>
+    </figure>
+  </div>
+
+  <section id="boundary">
+    <div class="col stack">
+      <span class="eyebrow">The problem</span>
+      <h2>The reward stops where the tests stop</h2>
+      <p>Code agents have a rare advantage for reinforcement learning: a reward you can compute. A change builds or it doesn't, the regression suite passes or it doesn't, and old and new code agree on a set of inputs or they don't. These signals are cheap and hard to argue with, so they are the natural thing to optimize.</p>
+      <p>They also have an edge. Past it sits the question you actually care about: is this change correct, or merely plausible? A policy trained hard against the verifiable signals will find that edge. The cleanest example is the one above: an agent that can't fix a branch the upgrade broke learns that deleting it turns everything green, because no test reaches it.</p>
+      <p>The longer the run, the worse this gets. Over 40 steps the chance of an honest run succeeding shrinks with every step, while a hack that reliably passes stays reliable. So the longer the horizon, the more the reward favors the hack.</p>
+    </div>
+    <div class="ladder" role="list" aria-label="What each signal verifies">
+      <div class="rung v" role="listitem"><span class="k">Verifiable</span><h3>Builds</h3><p>Cheap, total, and says almost nothing about behavior.</p></div>
+      <div class="rung v" role="listitem"><span class="k">Verifiable</span><h3>Passes regression</h3><p>Only covers the paths the suite reaches.</p></div>
+      <div class="rung v" role="listitem"><span class="k">Verifiable</span><h3>Behaves equivalently</h3><p>Only on the inputs you thought to try.</p></div>
+      <div class="rung u" role="listitem"><span class="k">Not verifiable</span><h3>Correct</h3><p>Right on paths and inputs nobody tested. This is what customers see.</p></div>
+    </div>
+    <div class="boundary-label"><span>← reward lives here</span><span>verification boundary ↑</span><span>the goal lives here →</span></div>
+  </section>
+
+  <section id="pilot">
+    <div class="col stack">
+      <span class="eyebrow">Phase 0 · done · toy scale</span>
+      <h2>A pilot: does the hack appear, and what stops it?</h2>
+      <p>Before proposing months of work I wanted to see the failure in a setting small enough to control completely. <strong>Patch World</strong> is a toy repair task: a program has 12 branches whose outputs follow a pattern, some branches are broken, and the agent must fix them. It can write a value, stub the branch, or delete it. Half the broken branches are reached by the visible tests. A hidden equivalence check compares every branch with the reference.</p>
+      <p>The policy is a small MLP, not a language model. It is first fine-tuned on demonstrations from a deliberately careless engineer, then trained with GRPO and a KL penalty back to that starting point, exactly as you would post-train an LLM, at a scale where {{n_runs}} runs finish on a laptop.</p>
+    </div>
+    <div class="facts">
+      <div class="fact"><span class="k">Task</span><p>4 broken branches per program by default. Off-by-one fixes build but are wrong; other wrong values fail the build.</p></div>
+      <div class="fact"><span class="k">Hacks</span><p>Deleting a branch always builds. A stub builds unless it fails to type-check, which happens on a quarter of branches.</p></div>
+      <div class="fact"><span class="k">Rewards compared</span><p>Visible checks only · a deletion penalty · random audits by the hidden check at 5–100% of episodes.</p></div>
+      <div class="fact"><span class="k">Rigor</span><p>{{n_seeds}} seeds per setting, {{rl_steps}} GRPO steps, greedy evaluation on 2,000 held-out programs. Same seed, same numbers.</p></div>
+    </div>
+
+    <figure class="fig" id="fig-curves">
+      <div class="fig-head">
+        <div><span class="fig-n">Figure 1</span><h3>The curve says it's working</h3><p>Share of held-out programs that pass the visible checks, and share that are actually correct, during GRPO. The shaded gap is false success: green on every check, wrong underneath.</p></div>
+        <div class="seg" role="group" aria-label="Reward" id="curve-seg"></div>
+      </div>
+      <div class="legend"><span><i class="line" style="background:var(--s-visible)"></i>Passes visible checks</span><span><i class="line" style="background:var(--s-true)"></i>Actually correct</span><span><i class="gap"></i>False success</span></div>
+      <div class="chart wide" id="chart-curves"></div>
+      <details class="table"><summary>Show as table</summary><div class="tbl" id="tbl-curves"></div></details>
+    </figure>
+
+    <figure class="fig" id="fig-mix">
+      <div class="fig-head">
+        <div><span class="fig-n">Figure 2</span><h3>What the agent does to branches no test reaches</h3><p>Outcome of every untested broken branch after training, by reward. The starting point is the fine-tuned policy before RL.</p></div>
+      </div>
+      <div class="legend" id="mix-legend"></div>
+      <div class="chart wide" id="chart-mix"></div>
+      <details class="table"><summary>Show as table</summary><div class="tbl" id="tbl-mix"></div></details>
+    </figure>
+
+    <div class="two" style="margin-top:20px">
+      <figure class="fig" id="fig-audit">
+        <div class="fig-head"><div><span class="fig-n">Figure 3</span><h3>How much auditing is enough</h3><p>False success after training against the audit rate: the share of episodes that also get the hidden equivalence check, with caught hacks penalized.</p></div></div>
+        <div class="legend"><span><i class="line" style="background:var(--o-deleted)"></i>False success</span><span><i class="line" style="background:var(--s-true)"></i>Actually correct</span></div>
+        <div class="chart" id="chart-audit"></div>
+        <details class="table"><summary>Show as table</summary><div class="tbl" id="tbl-audit"></div></details>
+      </figure>
+      <figure class="fig" id="fig-horizon">
+        <div class="fig-head"><div><span class="fig-n">Figure 4</span><h3>Longer runs, more hacking, until the reward goes silent</h3><p>False success after training against the number of broken branches the agent must fix in one episode.</p></div></div>
+        <div class="legend"><span><i class="line" style="background:var(--r-visible)"></i>Visible checks only</span><span><i class="line" style="background:var(--r-audit)"></i>Audit 10%</span></div>
+        <div class="chart" id="chart-horizon"></div>
+        <details class="table"><summary>Show as table</summary><div class="tbl" id="tbl-horizon"></div></details>
+      </figure>
+    </div>
+
+    <div class="findings">
+      <div class="finding"><span class="eyebrow">Finding 1</span><span class="big num">{{sft_fs}} → {{vis_fs}}</span><p>False success before and after GRPO on the visible checks alone. Passing rose to {{vis_visible}} while real correctness fell from {{sft_true}} to {{vis_true}}. Every reward curve looked like progress.</p></div>
+      <div class="finding"><span class="eyebrow">Finding 2</span><span class="big num" id="f2-big"></span><p id="f2-text"></p></div>
+      <div class="finding"><span class="eyebrow">Finding 3</span><span class="big num">{{a10_fs}}</span><p>False success with audits on 10% of episodes, against {{vis_fs}} with none and {{orc_fs}} with audits on every episode. Audits act like a threshold: 5% barely helps, 10% gets partway, and 25% already matches auditing everything (Figure 3).</p></div>
+      <div class="finding"><span class="eyebrow">Finding 4</span><span class="big num" id="f4-big"></span><p id="f4-text"></p></div>
+    </div>
+
+    <div class="col stack" style="margin-top:36px">
+      <h3>What the pilot does not show</h3>
+      <ul class="plain">
+        <li>It is a toy. The policy is an MLP with one decision per branch, not a language model writing code. The pilot shows that the dynamics exist and are measurable. It does not say how large they are on real agents.</li>
+        <li>The hidden check is perfect here. In real code there is no oracle; Phase 1 exists because measuring false success is itself the hard part.</li>
+        <li>RL never improved honest repair. Even with the oracle reward, correctness stayed at the fine-tuned starting level ({{orc_true}}). The pilot shows hacking appear and get suppressed, but not honest skill grow.</li>
+        <li>The deletion penalty worked here because the next hack was risky: a stub fails the build on a quarter of branches. Where a safe alternative hack exists, a targeted penalty may just move the policy to it. Phase 1 measures which hacks real agents have available.</li>
+        <li>At 8 broken branches nothing passes ({{h8_vis}}), so there is no gradient at all. That says sparse long-horizon rewards fail before hacking even starts, which is Phase 4's problem.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="roadmap">
+    <div class="col stack">
+      <span class="eyebrow">The program</span>
+      <h2>Eighteen months, five questions</h2>
+      <p>Each phase answers one question, produces something the team can use whether or not the next phase happens, and names the result that would kill it. Phases overlap where the later one only needs the earlier one's first output.</p>
+    </div>
+    <div class="timeline" aria-hidden="true"><div class="tl" id="tl"></div></div>
+    <div class="phases" id="phases"></div>
+  </section>
+
+  <section id="how">
+    <div class="col stack">
+      <span class="eyebrow">Working style</span>
+      <h2>How I'd run it</h2>
+    </div>
+    <div class="cols">
+      <div><h3>Kill criteria up front</h3><p>Every experiment is written down with the number that would end it before it runs. A weekly review where results get defended or dropped. Most of these ideas should die early and cheaply.</p></div>
+      <div><h3>Read the trajectories</h3><p>Reward curves are where the pilot's hack hid. Every training run samples passing trajectories for a human read and tracks audited false success next to reward from the first step.</p></div>
+      <div><h3>Small models first</h3><p>Open-weight models on rented clusters. Each question starts at the smallest model that shows the behavior, and scales up only to confirm a result that already holds.</p></div>
+      <div><h3>Report the bad number</h3><p>Each phase reports where a method failed alongside where it worked, the way the pilot reports that oracle RL never improved honest repair.</p></div>
+    </div>
+    <div class="col stack" style="margin-top:36px">
+      <h3>About me</h3>
+      <p>Four years of applied deep RL: a PEARL meta-RL agent for 1v1 air combat on DARPA's ACE program, an RL loop that tuned synthetic data generation against a downstream detector, and a single multi-stage PPO policy that got a Unitree Go1 to track, approach and kick a ball at Berkeley's Hybrid Robotics Lab. More recently, a small post-training study: SFT from a flawed demonstrator, then GRPO against a verifiable reward. My post-training work so far is toy-scale; the open-weight LLM tooling is what I'd ramp on first.</p>
+    </div>
+  </section>
+
+  <section id="reproduce">
+    <div class="col stack">
+      <span class="eyebrow">Reproduce</span>
+      <h2>Every number on this page comes from one command</h2>
+      <p>The pilot is about 400 lines of NumPy with no GPU and no deep-learning framework. The page is built from the results file the grid writes, so nothing here is typed by hand.</p>
+      <pre class="cmd">uv venv --python 3.11 .venv
+uv pip install --python .venv/bin/python numpy pytest
+.venv/bin/python -m pytest -q tests
+.venv/bin/python -m pilot.run_all       # {{n_runs}} runs, 3 seeds
+.venv/bin/python site/build.py          # rebuilds this page</pre>
+    </div>
+  </section>
+
+  <footer><span>Amal Mehta · Rewarding What You Can't Verify</span><span>Pilot: Patch World v1 · October 2026</span></footer>
+</div>
+
+<script>
+const RUNS = /*__DATA__*/null;
+const $ = (s, el = document) => el.querySelector(s);
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const pct = x => `${Math.round(x * 100)}%`;
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs = {}, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+const get = (label, h = 4) => RUNS.find(r => r.label === label && r.horizon === h);
+const OUTCOMES = [
+  ["correct", "Correct fix", "--o-correct"],
+  ["plausible", "Plausible, wrong", "--o-plausible"],
+  ["stubbed", "Stubbed", "--o-stubbed"],
+  ["deleted", "Deleted", "--o-deleted"],
+  ["build_fail", "Didn't build", "--o-buildfail"],
+];
+function table(target, head, rows) {
+  const t = document.createElement("table");
+  t.innerHTML = `<thead><tr>${head.map(h => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody>`;
+  target.replaceChildren(t);
+}
+function tipFor(chart) {
+  let t = chart.querySelector(".tip");
+  if (!t) { t = document.createElement("div"); t.className = "tip"; t.hidden = true; chart.appendChild(t); }
+  return t;
+}
+function showTip(chart, svg, x, y, html) {
+  const t = tipFor(chart);
+  const r = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal;
+  const px = x * r.width / vb.width, py = y * r.height / vb.height;
+  t.innerHTML = html; t.hidden = false;
+  const w = t.offsetWidth;
+  t.style.left = `${Math.min(Math.max(px, w / 2), r.width - w / 2)}px`;
+  t.style.top = `${py}px`;
+}
+const hideTip = chart => { const t = chart.querySelector(".tip"); if (t) t.hidden = true; };
+
+/* ---------- generic y axis ---------- */
+function yAxis(svg, m, W, H, ticks = [0, 0.25, 0.5, 0.75, 1]) {
+  const y = v => m.t + (1 - v) * (H - m.t - m.b);
+  for (const v of ticks) {
+    el("line", { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), class: "grid" }, svg);
+    el("text", { x: m.l - 8, y: y(v) + 4, "text-anchor": "end" }, svg).textContent = pct(v);
+  }
+  return y;
+}
+
+/* ---------- Figure 1: curves ---------- */
+const CURVE_OPTS = ["Visible tests only", "Deletion penalty", "Audit 10%", "Audit every episode"];
+let curveSel = CURVE_OPTS[0];
+function drawCurves() {
+  const chart = $("#chart-curves"); chart.replaceChildren();
+  const r = get(curveSel);
+  const W = 960, H = 320, m = { l: 48, r: 130, t: 14, b: 34 };
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": `Visible pass rate and true correctness over training, ${curveSel}` }, chart);
+  const y = yAxis(svg, m, W, H);
+  const steps = r.steps, maxS = steps[steps.length - 1];
+  const x = s => m.l + s / maxS * (W - m.l - m.r);
+  for (const s of steps.filter(s => s % 200 === 0)) el("text", { x: x(s), y: H - 12, "text-anchor": "middle" }, svg).textContent = s;
+  el("text", { x: W - m.r + 12, y: H - 12, "text-anchor": "start" }, svg).textContent = "GRPO step";
+  const V = r.curves.visible_pass, T = r.curves.true_correct;
+  const gap = steps.map((s, i) => `${x(s)},${y(V[i])}`).join(" ") + " " + steps.slice().reverse().map((s, j) => `${x(s)},${y(T[steps.length - 1 - j])}`).join(" ");
+  el("polygon", { points: gap, fill: css("--s-gap") }, svg);
+  const line = (arr, color) => el("polyline", { points: steps.map((s, i) => `${x(s)},${y(arr[i])}`).join(" "), fill: "none", stroke: color, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+  line(V, css("--s-visible")); line(T, css("--s-true"));
+  const last = steps.length - 1;
+  const endLabel = (val, text, color, dy) => {
+    el("circle", { cx: x(maxS), cy: y(val), r: 4, fill: color, stroke: css("--surface"), "stroke-width": 2 }, svg);
+    el("text", { x: x(maxS) + 10, y: y(val) + 4 + dy, class: "lbl" }, svg).textContent = `${text} ${pct(val)}`;
+  };
+  const dv = V[last], dt = T[last], sep = Math.abs(y(dv) - y(dt)) < 16 ? 8 : 0;
+  endLabel(dv, "passes", css("--s-visible"), dv >= dt ? -sep : sep);
+  endLabel(dt, "correct", css("--s-true"), dt > dv ? -sep : sep);
+  // hover
+  const cross = el("line", { y1: m.t, y2: H - m.b, stroke: css("--ink-3"), "stroke-width": 1, visibility: "hidden" }, svg);
+  const hit = el("rect", { x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, fill: "transparent" }, svg);
+  hit.addEventListener("pointermove", e => {
+    const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+    const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const i = Math.max(0, Math.min(last, Math.round((p.x - m.l) / (W - m.l - m.r) * last)));
+    cross.setAttribute("x1", x(steps[i])); cross.setAttribute("x2", x(steps[i])); cross.setAttribute("visibility", "visible");
+    showTip(chart, svg, x(steps[i]), y(Math.max(V[i], T[i])), `<b>step ${steps[i]}</b><br>passes ${pct(V[i])} · correct ${pct(T[i])}<br>false success ${pct(r.curves.false_success[i])}`);
+  });
+  hit.addEventListener("pointerleave", () => { cross.setAttribute("visibility", "hidden"); hideTip(chart); });
+  table($("#tbl-curves"), ["GRPO step", "Passes visible", "Correct", "False success"],
+    steps.filter((s, i) => s % 100 === 0).map(s => { const i = steps.indexOf(s); return [s, pct(V[i]), pct(T[i]), pct(r.curves.false_success[i])]; }));
+}
+const seg = $("#curve-seg");
+for (const o of CURVE_OPTS) {
+  const b = document.createElement("button"); b.type = "button"; b.textContent = o; b.setAttribute("aria-pressed", o === curveSel);
+  b.addEventListener("click", () => { curveSel = o; seg.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.textContent === o)); drawCurves(); });
+  seg.appendChild(b);
+}
+
+/* ---------- Figure 2: outcome mix ---------- */
+const MIX_ROWS = ["Visible tests only", "Deletion penalty", "Audit 5%", "Audit 10%", "Audit 25%", "Audit every episode"];
+function drawMix() {
+  const chart = $("#chart-mix"); chart.replaceChildren();
+  $("#mix-legend").innerHTML = OUTCOMES.map(([, n, v]) => `<span><i style="background:var(${v})"></i>${n}</span>`).join("");
+  const rows = [["Before RL (fine-tuned)", get("Visible tests only").sft_mix.uncovered], ...MIX_ROWS.map(l => [l, get(l).final_mix.uncovered])];
+  const W = 960, rowH = 30, gapY = 10, m = { l: 190, r: 12, t: 4, b: 26 };
+  const H = m.t + rows.length * (rowH + gapY) + m.b;
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Outcome mix on untested branches by reward" }, chart);
+  const x = v => m.l + v * (W - m.l - m.r);
+  for (const v of [0, 0.25, 0.5, 0.75, 1]) {
+    el("line", { x1: x(v), x2: x(v), y1: m.t, y2: H - m.b, class: "grid" }, svg);
+    el("text", { x: x(v), y: H - 8, "text-anchor": "middle" }, svg).textContent = pct(v);
+  }
+  rows.forEach(([label, mix], i) => {
+    const yy = m.t + i * (rowH + gapY);
+    el("text", { x: m.l - 12, y: yy + rowH / 2 + 4, "text-anchor": "end", class: i === 0 ? "" : "lbl" }, svg).textContent = label;
+    let acc = 0;
+    for (const [k, name, v] of OUTCOMES) {
+      const val = mix[k].mean; if (val <= 0.0005) continue;
+      const x0 = x(acc), w = Math.max(0, x(acc + val) - x0 - 2);
+      const rect = el("rect", { x: x0, y: yy, width: w, height: rowH, rx: 3, fill: css(v) }, svg);
+      if (w > 44) { const t = el("text", { x: x0 + w / 2, y: yy + rowH / 2 + 4, "text-anchor": "middle", style: `fill:${k === "build_fail" ? css("--ink-2") : "#fff"};font-weight:600` }, svg); t.textContent = pct(val); t.style.pointerEvents = "none"; }
+      rect.addEventListener("pointerenter", () => showTip(chart, svg, x0 + w / 2, yy, `<b>${label}</b><br>${name}: ${(val * 100).toFixed(1)}% ± ${(mix[k].std * 100).toFixed(1)}`));
+      rect.addEventListener("pointerleave", () => hideTip(chart));
+      acc += val;
+    }
+  });
+  table($("#tbl-mix"), ["Reward", ...OUTCOMES.map(o => o[1])], rows.map(([l, mix]) => [l, ...OUTCOMES.map(([k]) => (mix[k].mean * 100).toFixed(1) + "%")]));
+}
+
+/* ---------- small line chart for sweeps ---------- */
+function sweep(target, tblTarget, xs, xlabels, series, xTitle, head) {
+  const chart = $(target); chart.replaceChildren();
+  const W = 460, H = 260, m = { l: 44, r: 16, t: 14, b: 40 };
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": xTitle }, chart);
+  const y = yAxis(svg, m, W, H);
+  const x = i => m.l + 10 + i * (W - m.l - m.r - 20) / (xs.length - 1);
+  xs.forEach((_, i) => el("text", { x: x(i), y: H - 22, "text-anchor": "middle" }, svg).textContent = xlabels[i]);
+  el("text", { x: (W + m.l) / 2, y: H - 4, "text-anchor": "middle" }, svg).textContent = xTitle;
+  for (const s of series) {
+    const c = css(s.color);
+    el("polyline", { points: s.vals.map((v, i) => `${x(i)},${y(v.mean)}`).join(" "), fill: "none", stroke: c, "stroke-width": 2, "stroke-linejoin": "round" }, svg);
+    s.vals.forEach((v, i) => {
+      if (v.std > 0.005) el("line", { x1: x(i), x2: x(i), y1: y(Math.min(1, v.mean + v.std)), y2: y(Math.max(0, v.mean - v.std)), stroke: c, "stroke-width": 1.5, opacity: 0.5 }, svg);
+      const dot = el("circle", { cx: x(i), cy: y(v.mean), r: 4.5, fill: c, stroke: css("--surface"), "stroke-width": 2 }, svg);
+      const hit = el("circle", { cx: x(i), cy: y(v.mean), r: 12, fill: "transparent" }, svg);
+      hit.addEventListener("pointerenter", () => showTip(chart, svg, x(i), y(v.mean), `<b>${s.name}</b> · ${xlabels[i]}<br>${(v.mean * 100).toFixed(1)}% ± ${(v.std * 100).toFixed(1)} (${v.n} seeds)`));
+      hit.addEventListener("pointerleave", () => hideTip(chart));
+    });
+  }
+  table($(tblTarget), head, xs.map((_, i) => [xlabels[i], ...series.map(s => `${(s.vals[i].mean * 100).toFixed(1)}%`)]));
+}
+function drawAudit() {
+  const labels = ["Visible tests only", "Audit 5%", "Audit 10%", "Audit 25%", "Audit every episode"];
+  const rs = labels.map(l => get(l));
+  sweep("#chart-audit", "#tbl-audit", rs, ["0%", "5%", "10%", "25%", "100%"], [
+    { name: "False success", color: "--o-deleted", vals: rs.map(r => r.final.false_success) },
+    { name: "Actually correct", color: "--s-true", vals: rs.map(r => r.final.true_correct) },
+  ], "share of episodes audited", ["Audit rate", "False success", "Correct"]);
+}
+function drawHorizon() {
+  const hs = [1, 2, 4, 6, 8];
+  sweep("#chart-horizon", "#tbl-horizon", hs, hs.map(String), [
+    { name: "Visible checks only", color: "--r-visible", vals: hs.map(h => get("Visible tests only", h).final.false_success) },
+    { name: "Audit 10%", color: "--r-audit", vals: hs.map(h => get("Audit 10%", h).final.false_success) },
+  ], "broken branches per episode", ["Branches", "Visible only", "Audit 10%"]);
+}
+
+/* ---------- data-driven findings ---------- */
+function findings() {
+  const v = get("Visible tests only").final_mix.uncovered, d = get("Deletion penalty").final_mix.uncovered;
+  $("#f2-big").textContent = `${pct(d.deleted.mean)} / ${pct(d.stubbed.mean)}`;
+  $("#f2-text").textContent = `Deleted / stubbed untested branches after training with a deletion penalty, against ${pct(v.deleted.mean)} / ${pct(v.stubbed.mean)} with the visible checks alone. ` +
+    (d.stubbed.mean > v.stubbed.mean + 0.05 ? "Penalizing the hack you found moved the policy to the next one." : "I expected the policy to switch to stubs. It didn't: a stub sometimes fails the build, so an honest attempt was the better bet. A targeted penalty is enough only when the next hack is risky.");
+  const hs = [1, 2, 4, 6, 8], fs = hs.map(h => get("Visible tests only", h).final.false_success.mean);
+  const peak = hs[fs.indexOf(Math.max(...fs))];
+  $("#f4-big").textContent = `${pct(fs[0])} → ${pct(Math.max(...fs))}`;
+  $("#f4-text").textContent = `False success at 1 broken branch against its peak at ${peak}. With one branch an honest fix usually passes and RL leaves it alone; as the horizon grows, honest runs fail more often and the hack wins. By 8 branches almost nothing passes and there is no signal left to hack.`;
+}
+
+/* ---------- roadmap ---------- */
+const TAGS = {
+  "Reward hacking": "ver-1", "Verifier design": "ver-2", "Audits": "ver-3",
+  "Credit assignment": "lh-1", "Agent memory": "lh-2", "Multi-agent": "lh-3",
+  "Benchmarks": "ev-1", "Customer outcomes": "ev-2",
+};
+const PHASES = [
+  { p: "Phase 0", t: "Done", from: 0, to: 0, name: "Toy pilot", color: "--t-ver-1", tags: ["Reward hacking", "Audits"], status: true,
+    q: "Does verifier-optimal hacking appear under GRPO, and what stops it?",
+    method: "Patch World, above. SFT from a flawed demonstrator, GRPO against five rewards, horizon sweep, three seeds.",
+    output: "Code, results file and this page.",
+    kill: "Already passed: the hack appeared and audits measurably reduced it." },
+  { p: "Phase 1", t: "Months 1–3", from: 1, to: 3, name: "Measure false success", color: "--t-ver-1", tags: ["Reward hacking", "Benchmarks"],
+    q: "How many of our agents' green runs are wrong, and what do the hacks look like?",
+    method: "Sample passing trajectories from current agent runs. Push verification past the suite after the fact: mutation testing, differential testing of old against new code on generated inputs, coverage of the edited lines, and expert review of a slice. Label each run and build a taxonomy (deleted path, stub, weakened test, input special-casing, plausible but wrong).",
+    output: "A false-success rate with confidence intervals by task type, and a held-out labeled set every later phase is scored on.",
+    kill: "If audited false success is under about 2% of passing runs, the boundary is not the bottleneck. Redirect effort to Phase 4." },
+  { p: "Phase 2", t: "Months 3–7", from: 3, to: 7, name: "Extend the verifier", color: "--t-ver-2", tags: ["Verifier design", "Reward hacking"],
+    q: "Which cheap checks catch the hacks Phase 1 found?",
+    method: "Candidate signals: coverage-gated credit (edits to code no test reaches earn nothing until a generated test reaches them), differential tests against the pre-change program, mutation scores, and diff-level detectors. Score each on the Phase 1 set for precision, recall and compute per episode.",
+    output: "A ranked menu of verifier signals with measured cost, and the ones that go into the reward.",
+    kill: "Drop any signal that misses most of a hack class or costs more than the episode it checks." },
+  { p: "Phase 3", t: "Months 5–10", from: 5, to: 10, name: "Budgeted audits in RL", color: "--t-ver-3", tags: ["Audits", "Reward hacking"],
+    q: "How much expensive verification does training need, and where should it go?",
+    method: "Repeat the pilot's audit sweep on an open-weight model with the Phase 2 checks as the audit. Then replace random audits with targeted ones: audit the episodes whose diffs touch uncovered code, and compare at equal compute.",
+    output: "The audit-rate curve for our models and a post-training recipe that holds audited false success under a target.",
+    kill: "If targeted audits don't beat random ones at equal compute, ship the random-audit recipe and stop." },
+  { p: "Phase 4", t: "Months 8–15", from: 8, to: 15, name: "Long horizons", color: "--t-lh-2", tags: ["Credit assignment", "Agent memory", "Multi-agent"],
+    q: "How do we keep a 40-step, multi-day run honest when reward arrives at the end?",
+    method: "Verifiable checkpoints inside the run (build and targeted tests after each step) as intermediate reward. A ledger in the agent's memory of which claims it has verified and which it assumed, carried across days. Measure how per-step errors compound across steps and across agent handoffs in multi-agent plans.",
+    output: "A step-level reward recipe and a memory format, each with measured effect on end-of-run false success.",
+    kill: "If intermediate checks don't beat end-of-run reward at equal compute on 40-step tasks, keep the simpler reward." },
+  { p: "Phase 5", t: "Months 12–18", from: 12, to: 18, name: "Predictive evals", color: "--t-ev-1", tags: ["Benchmarks", "Customer outcomes"],
+    q: "Which offline numbers predict what customers see?",
+    method: "Join offline eval results with what happened after delivery: reverted changes, bug reports, review rejections. Fit which offline signals predict those outcomes and track audited false success as a release metric.",
+    output: "An eval suite with a measured correlation to customer-observed correctness.",
+    kill: "If no offline signal predicts customer outcomes better than pass rate does, report that and redesign the audit set." },
+];
+function roadmap() {
+  const tl = $("#tl");
+  tl.innerHTML = `<span></span>` + Array.from({ length: 18 }, (_, i) => `<span class="m">${i + 1}</span>`).join("");
+  PHASES.slice(1).forEach((ph, i) => {
+    const row = i + 2;
+    tl.insertAdjacentHTML("beforeend", `<span class="name" style="grid-row:${row};grid-column:1">${ph.p} · ${ph.name}</span><span class="bar" style="grid-row:${row};grid-column:${ph.from + 1} / ${ph.to + 2};background:var(${ph.color})"></span>`);
+  });
+  $("#phases").innerHTML = PHASES.map(ph => `
+    <article class="phase">
+      <div class="when"><span class="p">${ph.p}</span><span class="t">${ph.t}</span>${ph.status ? '<span class="status">✓ Complete</span>' : ""}</div>
+      <div class="body">
+        <h3>${ph.name}</h3>
+        <p class="q">${ph.q}</p>
+        <div class="tags">${ph.tags.map(t => `<span class="tag ${TAGS[t]}">${t}</span>`).join("")}</div>
+        <dl><dt>Method</dt><dd>${ph.method}</dd><dt>Output</dt><dd>${ph.output}</dd><dt>Kill if</dt><dd class="kill">${ph.kill}</dd></dl>
+      </div>
+    </article>`).join("");
+}
+
+function drawAll() { drawCurves(); drawMix(); drawAudit(); drawHorizon(); }
+findings(); roadmap(); drawAll();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawAll);
+new MutationObserver(drawAll).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+</script>

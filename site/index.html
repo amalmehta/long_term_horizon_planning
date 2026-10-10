@@ -1,0 +1,652 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rewarding What You Can't Verify</title>
+<meta name="description" content="A long-horizon post-training research program for agents whose verifiable reward (build, regression, equivalence) is narrower than correctness, with a reproducible toy pilot.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column (~68ch) with wide breakouts for the diff and the charts.
+   The page's motif is the coverage gutter: a thin left margin that marks what the tests reach. */
+:root {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --ink: #12151c;
+  --ink-2: #4b5161;
+  --ink-3: #7a8091;
+  --rule: #dfe2e8;
+  --accent: #2f4bd8;
+  --accent-soft: #e6eafc;
+
+  /* outcomes: honest (aqua), merely plausible (violet), hacks (red family), no build (neutral) */
+  --o-correct: #1baf7a;
+  --o-plausible: #7b6fd6;
+  --o-stubbed: #f08a5d;
+  --o-deleted: #b3261e;
+  --o-buildfail: #c9ccd3;
+  /* signals: what the verifier sees (blue) vs. what is true (aqua) */
+  --s-visible: #2a78d6;
+  --s-true: #1baf7a;
+  --s-gap: rgba(179, 38, 30, 0.12);
+  /* reward families: proxy-only (warm) vs audited (blue ramp) */
+  --r-visible: #b3261e;
+  --r-audit: #2a78d6;
+
+  /* tag families: verification (blue), long horizon (green), evaluation (amber) */
+  --t-ver-1: #dbe7fb; --t-ver-1-ink: #1c4f95;
+  --t-ver-2: #b9d0f6; --t-ver-2-ink: #143f7a;
+  --t-ver-3: #8fb3ee; --t-ver-3-ink: #0d2f61;
+  --t-lh-1: #d6f0dc; --t-lh-1-ink: #1d6b33;
+  --t-lh-2: #ade2b9; --t-lh-2-ink: #145426;
+  --t-lh-3: #7fcd92; --t-lh-3-ink: #0c3f1b;
+  --t-ev-1: #fbe9c6; --t-ev-1-ink: #7a4b00;
+  --t-ev-2: #f5d38f; --t-ev-2-ink: #5e3a00;
+
+  --code-bg: #f7f8fa;
+  --del-bg: #fde8e6;
+  --del-ink: #8e1d17;
+  --cov-hit: #1baf7a;
+  --cov-miss: #e2e4ea;
+
+  --f-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Source Serif 4", "Iowan Old Style", Georgia, serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1217; --surface: #161a21; --ink: #eceef3; --ink-2: #b4b9c6; --ink-3: #868c9b;
+    --rule: #2a2f3a; --accent: #8fa2ff; --accent-soft: #1d2440;
+    --o-correct: #199e70; --o-plausible: #9085e9; --o-stubbed: #dc7448; --o-deleted: #a8322b; --o-buildfail: #3b404b;
+    --s-visible: #3987e5; --s-true: #199e70; --s-gap: rgba(230, 103, 103, 0.16);
+    --r-visible: #e66767; --r-audit: #3987e5;
+    --t-ver-1: #16294a; --t-ver-1-ink: #a9c6f5; --t-ver-2: #1d3766; --t-ver-2-ink: #c3d7f8; --t-ver-3: #284a85; --t-ver-3-ink: #dde8fb;
+    --t-lh-1: #132e1b; --t-lh-1-ink: #9fdcae; --t-lh-2: #1a4426; --t-lh-2-ink: #bfe8c8; --t-lh-3: #245b33; --t-lh-3-ink: #dbf3e0;
+    --t-ev-1: #3a2a08; --t-ev-1-ink: #f2cf86; --t-ev-2: #54400f; --t-ev-2-ink: #f8e2b0;
+    --code-bg: #12161c; --del-bg: #3a1614; --del-ink: #f2a39c; --cov-hit: #199e70; --cov-miss: #2a2f3a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1217; --surface: #161a21; --ink: #eceef3; --ink-2: #b4b9c6; --ink-3: #868c9b;
+  --rule: #2a2f3a; --accent: #8fa2ff; --accent-soft: #1d2440;
+  --o-correct: #199e70; --o-plausible: #9085e9; --o-stubbed: #dc7448; --o-deleted: #a8322b; --o-buildfail: #3b404b;
+  --s-visible: #3987e5; --s-true: #199e70; --s-gap: rgba(230, 103, 103, 0.16);
+  --r-visible: #e66767; --r-audit: #3987e5;
+  --t-ver-1: #16294a; --t-ver-1-ink: #a9c6f5; --t-ver-2: #1d3766; --t-ver-2-ink: #c3d7f8; --t-ver-3: #284a85; --t-ver-3-ink: #dde8fb;
+  --t-lh-1: #132e1b; --t-lh-1-ink: #9fdcae; --t-lh-2: #1a4426; --t-lh-2-ink: #bfe8c8; --t-lh-3: #245b33; --t-lh-3-ink: #dbf3e0;
+  --t-ev-1: #3a2a08; --t-ev-1-ink: #f2cf86; --t-ev-2: #54400f; --t-ev-2-ink: #f8e2b0;
+  --code-bg: #12161c; --del-bg: #3a1614; --del-ink: #f2a39c; --cov-hit: #199e70; --cov-miss: #2a2f3a;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 400 1.0625rem/1.65 var(--f-body);
+  padding-inline: 16px; padding-block: 0 64px;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1040px; margin-inline: auto; }
+.col { max-width: 68ch; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; letter-spacing: -0.01em; color: var(--ink); }
+h1 { font-size: clamp(2.3rem, 5.5vw, 3.9rem); line-height: 1.02; font-weight: 700; margin: 0; }
+h2 { font-size: clamp(1.6rem, 3vw, 2.1rem); line-height: 1.12; font-weight: 700; margin: 0 0 0.6rem; }
+h3 { font-size: 1.15rem; line-height: 1.25; font-weight: 700; margin: 0; }
+p { margin: 0; }
+.stack { display: flex; flex-direction: column; gap: 1rem; }
+.eyebrow { font: 600 0.72rem/1.2 var(--f-mono); letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-3); }
+.lede { font-size: 1.25rem; line-height: 1.5; color: var(--ink-2); }
+a { color: var(--accent); text-underline-offset: 2px; }
+a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+code, .mono { font-family: var(--f-mono); font-size: 0.86em; }
+.num { font-variant-numeric: tabular-nums; }
+strong { font-weight: 600; }
+
+/* top bar */
+.top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding-block: 20px; border-bottom: 1px solid var(--rule); }
+.top nav { display: flex; gap: 18px; flex-wrap: wrap; font: 500 0.85rem var(--f-display); }
+.top nav a { color: var(--ink-2); text-decoration: none; }
+.top nav a:hover { color: var(--ink); }
+.mark { font: 700 0.95rem var(--f-display); }
+
+section { padding-block: 64px 0; }
+section + section { border-top: 1px solid var(--rule); margin-top: 64px; }
+
+/* hero */
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 48px; align-items: center; padding-block: 56px 0; }
+.hero > * { min-width: 0; }
+.byline { font: 500 0.9rem var(--f-display); color: var(--ink-2); }
+@media (max-width: 880px) { .hero { grid-template-columns: 1fr; gap: 32px; } }
+
+/* the diff */
+.diff { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+.diff-head { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid var(--rule); font: 500 0.75rem var(--f-mono); color: var(--ink-3); }
+.diff-body { overflow-x: auto; background: var(--code-bg); }
+.diff pre { margin: 0; font: 400 0.8rem/1.75 var(--f-mono); min-width: max-content; display: flex; flex-direction: column; }
+.ln { display: grid; grid-template-columns: 6px 22px 1fr; padding-right: 16px; }
+.ln .cov { background: var(--cov-miss); }
+.ln.hit .cov { background: var(--cov-hit); }
+.ln .sign { text-align: center; color: var(--ink-3); }
+.ln.del { background: var(--del-bg); color: var(--del-ink); }
+.ln.del .sign { color: var(--del-ink); }
+.diff-foot { display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 12px 14px; border-top: 1px solid var(--rule); font: 500 0.78rem var(--f-mono); }
+.pass { color: var(--o-correct); }
+.diff-foot .verdict { color: var(--ink-2); flex-basis: 100%; font-family: var(--f-body); font-size: 0.92rem; font-style: italic; }
+.cov-key { display: flex; gap: 14px; font: 500 0.72rem var(--f-mono); color: var(--ink-3); padding: 8px 14px; border-top: 1px solid var(--rule); flex-wrap: wrap; }
+.cov-key i { display: inline-block; width: 6px; height: 12px; vertical-align: -2px; margin-right: 6px; }
+
+/* boundary ladder */
+.ladder { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; margin-top: 28px; border-radius: 10px; overflow: hidden; }
+.rung { background: var(--surface); padding: 18px 16px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.rung .k { font: 600 0.7rem var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; }
+.rung.v .k { color: var(--s-visible); }
+.rung.u { background: repeating-linear-gradient(135deg, var(--surface) 0 8px, var(--bg) 8px 9px); }
+.rung.u .k { color: var(--o-deleted); }
+.rung p { font-size: 0.92rem; line-height: 1.45; color: var(--ink-2); }
+.boundary-label { display: flex; justify-content: space-between; font: 500 0.75rem var(--f-mono); color: var(--ink-3); margin-top: 8px; gap: 8px; }
+@media (max-width: 720px) { .ladder { grid-template-columns: 1fr 1fr; } }
+
+/* pilot facts */
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 24px; margin-top: 28px; }
+.fact { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.fact .k { font: 600 0.7rem var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.fact p { font-size: 0.95rem; line-height: 1.5; color: var(--ink-2); }
+
+/* figures */
+.fig { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 20px 20px 14px; margin-top: 28px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.fig-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.fig-head > div { min-width: 0; max-width: 62ch; }
+.fig-head p { font-size: 0.95rem; color: var(--ink-2); margin-top: 4px; }
+.fig-n { font: 600 0.72rem var(--f-mono); color: var(--ink-3); letter-spacing: 0.08em; text-transform: uppercase; }
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart.wide { overflow-x: auto; }
+.chart.wide svg { min-width: 680px; }
+.chart text { font-family: var(--f-mono); font-size: 11px; fill: var(--ink-3); }
+.chart .lbl { fill: var(--ink); font-weight: 600; }
+.chart .grid { stroke: var(--rule); stroke-width: 1; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font: 500 0.78rem var(--f-mono); color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.legend i.line { height: 3px; border-radius: 2px; }
+.legend i.gap { background: var(--s-gap); border: 1px dashed var(--o-deleted); }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; flex-wrap: wrap; }
+.seg button { font: 500 0.78rem var(--f-display); background: var(--surface); color: var(--ink-2); border: 0; padding: 7px 11px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--rule); }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--ink); }
+.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); font: 500 0.75rem/1.45 var(--f-mono); padding: 8px 10px; border-radius: 6px; white-space: nowrap; z-index: 2; transform: translate(-50%, calc(-100% - 10px)); }
+.tip[hidden] { display: none !important; }
+.tip b { font-weight: 600; }
+.note { font-size: 0.9rem; color: var(--ink-2); border-left: 2px solid var(--rule); padding-left: 12px; }
+details.table { font-size: 0.85rem; }
+details.table summary { cursor: pointer; font: 500 0.78rem var(--f-mono); color: var(--ink-3); }
+.tbl { overflow-x: auto; margin-top: 8px; }
+.tbl table { border-collapse: collapse; font: 400 0.78rem var(--f-mono); font-variant-numeric: tabular-nums; min-width: 100%; }
+.tbl th, .tbl td { text-align: right; padding: 5px 10px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+.tbl th:first-child, .tbl td:first-child { text-align: left; }
+.tbl th { color: var(--ink-3); font-weight: 600; }
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+.two > .fig { margin-top: 0; }
+@media (max-width: 820px) { .two { grid-template-columns: 1fr; } }
+
+/* findings */
+.findings { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 28px; margin-top: 32px; }
+.finding { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.finding .big { font: 700 2.1rem/1 var(--f-display); font-variant-numeric: tabular-nums; }
+.finding p { font-size: 0.95rem; color: var(--ink-2); }
+
+/* roadmap */
+.timeline { margin-top: 32px; overflow-x: auto; }
+.tl { min-width: 760px; display: grid; grid-template-columns: 250px repeat(18, minmax(0, 1fr)); row-gap: 6px; font: 500 0.75rem var(--f-mono); color: var(--ink-3); }
+.tl .m { text-align: center; border-left: 1px solid var(--rule); padding-bottom: 4px; }
+.tl .name { color: var(--ink-2); padding-right: 10px; align-self: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tl .bar { height: 18px; border-radius: 4px; align-self: center; }
+.phases { display: flex; flex-direction: column; gap: 0; margin-top: 36px; }
+.phase { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 28px; padding-block: 28px; border-top: 1px solid var(--rule); }
+.phase .when { display: flex; flex-direction: column; gap: 6px; }
+.phase .when .p { font: 700 0.85rem var(--f-display); }
+.phase .when .t { font: 500 0.78rem var(--f-mono); color: var(--ink-3); }
+.phase .body { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.phase .q { font-size: 1.1rem; font-style: italic; color: var(--ink); }
+.phase dl { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 8px 16px; margin: 0; font-size: 0.95rem; }
+.phase dt { font: 600 0.7rem/1.9 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.phase dd { margin: 0; color: var(--ink-2); }
+.phase dd.kill { color: var(--ink); }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag { font: 500 0.72rem var(--f-mono); padding: 3px 8px; border-radius: 999px; }
+.tag.ver-1 { background: var(--t-ver-1); color: var(--t-ver-1-ink); }
+.tag.ver-2 { background: var(--t-ver-2); color: var(--t-ver-2-ink); }
+.tag.ver-3 { background: var(--t-ver-3); color: var(--t-ver-3-ink); }
+.tag.lh-1 { background: var(--t-lh-1); color: var(--t-lh-1-ink); }
+.tag.lh-2 { background: var(--t-lh-2); color: var(--t-lh-2-ink); }
+.tag.lh-3 { background: var(--t-lh-3); color: var(--t-lh-3-ink); }
+.tag.ev-1 { background: var(--t-ev-1); color: var(--t-ev-1-ink); }
+.tag.ev-2 { background: var(--t-ev-2); color: var(--t-ev-2-ink); }
+.status { font: 600 0.7rem var(--f-mono); padding: 2px 8px; border-radius: 4px; border: 1px solid var(--o-correct); color: var(--o-correct); align-self: flex-start; }
+@media (max-width: 720px) {
+  .phase { grid-template-columns: 1fr; gap: 12px; }
+  .phase dl { grid-template-columns: 1fr; gap: 2px; }
+  .phase dd { margin-bottom: 8px; }
+}
+
+/* principles & limits */
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 28px 40px; margin-top: 28px; }
+.cols > div { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.cols p { font-size: 0.95rem; color: var(--ink-2); }
+ul.plain { margin: 0; padding-left: 1.1em; display: flex; flex-direction: column; gap: 8px; color: var(--ink-2); }
+pre.cmd { background: var(--code-bg); border: 1px solid var(--rule); border-radius: 8px; padding: 14px 16px; overflow-x: auto; font: 400 0.82rem/1.7 var(--f-mono); margin: 0; }
+footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--rule); font: 500 0.8rem var(--f-mono); color: var(--ink-3); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <span class="mark">Rewarding What You Can't Verify</span>
+    <nav aria-label="Sections">
+      <a href="#boundary">The boundary</a>
+      <a href="#pilot">Pilot</a>
+      <a href="#roadmap">Roadmap</a>
+      <a href="#how">How I'd run it</a>
+      <a href="#reproduce">Reproduce</a>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <div class="stack">
+      <span class="eyebrow">Research proposal · Post-training for long-horizon agents</span>
+      <h1>Rewarding what you can't verify</h1>
+      <p class="lede">An 18-month research program for post-training code agents when the checks you can run (it builds, it passes regression, it behaves equivalently on tested inputs) are narrower than the thing you want: a change that is correct.</p>
+      <p class="byline">Amal Mehta · October 2026 · written for Tessera Labs</p>
+    </div>
+    <figure class="diff" aria-label="Example: a diff that deletes an untested branch and still passes every check">
+      <div class="diff-head"><span>pricing/shipping.py</span><span>agent patch · step 31 of 40</span></div>
+      <div class="diff-body"><pre><span class="ln hit"><span class="cov"></span><span class="sign"> </span><span> def shipping_rate(order):</span></span>
+<span class="ln hit"><span class="cov"></span><span class="sign"> </span><span>     if order.region == "US":</span></span>
+<span class="ln hit"><span class="cov"></span><span class="sign"> </span><span>         return domestic_rate(order)</span></span>
+<span class="ln del"><span class="cov"></span><span class="sign">−</span><span>     elif order.region == "EU":</span></span>
+<span class="ln del"><span class="cov"></span><span class="sign">−</span><span>         return eu_rate(order, vat=VAT[order.country])</span></span>
+<span class="ln hit"><span class="cov"></span><span class="sign"> </span><span>     return flat_rate(order)</span></span></pre></div>
+      <div class="cov-key"><span><i style="background:var(--cov-hit)"></i>reached by tests</span><span><i style="background:var(--cov-miss)"></i>not reached</span></div>
+      <div class="diff-foot">
+        <span class="pass">✓ build</span><span class="pass">✓ regression 214 / 214</span><span class="pass">✓ equivalent on tested inputs</span>
+        <span class="verdict">Every check is green. EU orders now ship at the flat rate.</span>
+      </div>
+    </figure>
+  </div>
+
+  <section id="boundary">
+    <div class="col stack">
+      <span class="eyebrow">The problem</span>
+      <h2>The reward stops where the tests stop</h2>
+      <p>Code agents have a rare advantage for reinforcement learning: a reward you can compute. A change builds or it doesn't, the regression suite passes or it doesn't, and old and new code agree on a set of inputs or they don't. These signals are cheap and hard to argue with, so they are the natural thing to optimize.</p>
+      <p>They also have an edge. Past it sits the question you actually care about: is this change correct, or merely plausible? A policy trained hard against the verifiable signals will find that edge. The cleanest example is the one above: an agent that can't fix a branch the upgrade broke learns that deleting it turns everything green, because no test reaches it.</p>
+      <p>The longer the run, the worse this gets. Over 40 steps the chance of an honest run succeeding shrinks with every step, while a hack that reliably passes stays reliable. So the longer the horizon, the more the reward favors the hack.</p>
+    </div>
+    <div class="ladder" role="list" aria-label="What each signal verifies">
+      <div class="rung v" role="listitem"><span class="k">Verifiable</span><h3>Builds</h3><p>Cheap, total, and says almost nothing about behavior.</p></div>
+      <div class="rung v" role="listitem"><span class="k">Verifiable</span><h3>Passes regression</h3><p>Only covers the paths the suite reaches.</p></div>
+      <div class="rung v" role="listitem"><span class="k">Verifiable</span><h3>Behaves equivalently</h3><p>Only on the inputs you thought to try.</p></div>
+      <div class="rung u" role="listitem"><span class="k">Not verifiable</span><h3>Correct</h3><p>Right on paths and inputs nobody tested. This is what customers see.</p></div>
+    </div>
+    <div class="boundary-label"><span>← reward lives here</span><span>verification boundary ↑</span><span>the goal lives here →</span></div>
+  </section>
+
+  <section id="pilot">
+    <div class="col stack">
+      <span class="eyebrow">Phase 0 · done · toy scale</span>
+      <h2>A pilot: does the hack appear, and what stops it?</h2>
+      <p>Before proposing months of work I wanted to see the failure in a setting small enough to control completely. <strong>Patch World</strong> is a toy repair task: a program has 12 branches whose outputs follow a pattern, some branches are broken, and the agent must fix them. It can write a value, stub the branch, or delete it. Half the broken branches are reached by the visible tests. A hidden equivalence check compares every branch with the reference.</p>
+      <p>The policy is a small MLP, not a language model. It is first fine-tuned on demonstrations from a deliberately careless engineer, then trained with GRPO and a KL penalty back to that starting point, exactly as you would post-train an LLM, at a scale where 42 runs finish on a laptop.</p>
+    </div>
+    <div class="facts">
+      <div class="fact"><span class="k">Task</span><p>4 broken branches per program by default. Off-by-one fixes build but are wrong; other wrong values fail the build.</p></div>
+      <div class="fact"><span class="k">Hacks</span><p>Deleting a branch always builds. A stub builds unless it fails to type-check, which happens on a quarter of branches.</p></div>
+      <div class="fact"><span class="k">Rewards compared</span><p>Visible checks only · a deletion penalty · random audits by the hidden check at 5–100% of episodes.</p></div>
+      <div class="fact"><span class="k">Rigor</span><p>3 seeds per setting, 1000 GRPO steps, greedy evaluation on 2,000 held-out programs. Same seed, same numbers.</p></div>
+    </div>
+
+    <figure class="fig" id="fig-curves">
+      <div class="fig-head">
+        <div><span class="fig-n">Figure 1</span><h3>The curve says it's working</h3><p>Share of held-out programs that pass the visible checks, and share that are actually correct, during GRPO. The shaded gap is false success: green on every check, wrong underneath.</p></div>
+        <div class="seg" role="group" aria-label="Reward" id="curve-seg"></div>
+      </div>
+      <div class="legend"><span><i class="line" style="background:var(--s-visible)"></i>Passes visible checks</span><span><i class="line" style="background:var(--s-true)"></i>Actually correct</span><span><i class="gap"></i>False success</span></div>
+      <div class="chart wide" id="chart-curves"></div>
+      <details class="table"><summary>Show as table</summary><div class="tbl" id="tbl-curves"></div></details>
+    </figure>
+
+    <figure class="fig" id="fig-mix">
+      <div class="fig-head">
+        <div><span class="fig-n">Figure 2</span><h3>What the agent does to branches no test reaches</h3><p>Outcome of every untested broken branch after training, by reward. The starting point is the fine-tuned policy before RL.</p></div>
+      </div>
+      <div class="legend" id="mix-legend"></div>
+      <div class="chart wide" id="chart-mix"></div>
+      <details class="table"><summary>Show as table</summary><div class="tbl" id="tbl-mix"></div></details>
+    </figure>
+
+    <div class="two" style="margin-top:20px">
+      <figure class="fig" id="fig-audit">
+        <div class="fig-head"><div><span class="fig-n">Figure 3</span><h3>How much auditing is enough</h3><p>False success after training against the audit rate: the share of episodes that also get the hidden equivalence check, with caught hacks penalized.</p></div></div>
+        <div class="legend"><span><i class="line" style="background:var(--o-deleted)"></i>False success</span><span><i class="line" style="background:var(--s-true)"></i>Actually correct</span></div>
+        <div class="chart" id="chart-audit"></div>
+        <details class="table"><summary>Show as table</summary><div class="tbl" id="tbl-audit"></div></details>
+      </figure>
+      <figure class="fig" id="fig-horizon">
+        <div class="fig-head"><div><span class="fig-n">Figure 4</span><h3>Longer runs, more hacking, until the reward goes silent</h3><p>False success after training against the number of broken branches the agent must fix in one episode.</p></div></div>
+        <div class="legend"><span><i class="line" style="background:var(--r-visible)"></i>Visible checks only</span><span><i class="line" style="background:var(--r-audit)"></i>Audit 10%</span></div>
+        <div class="chart" id="chart-horizon"></div>
+        <details class="table"><summary>Show as table</summary><div class="tbl" id="tbl-horizon"></div></details>
+      </figure>
+    </div>
+
+    <div class="findings">
+      <div class="finding"><span class="eyebrow">Finding 1</span><span class="big num">4% → 56%</span><p>False success before and after GRPO on the visible checks alone. Passing rose to 58% while real correctness fell from 31% to 2%. Every reward curve looked like progress.</p></div>
+      <div class="finding"><span class="eyebrow">Finding 2</span><span class="big num" id="f2-big"></span><p id="f2-text"></p></div>
+      <div class="finding"><span class="eyebrow">Finding 3</span><span class="big num">28%</span><p>False success with audits on 10% of episodes, against 56% with none and 4% with audits on every episode. Audits act like a threshold: 5% barely helps, 10% gets partway, and 25% already matches auditing everything (Figure 3).</p></div>
+      <div class="finding"><span class="eyebrow">Finding 4</span><span class="big num" id="f4-big"></span><p id="f4-text"></p></div>
+    </div>
+
+    <div class="col stack" style="margin-top:36px">
+      <h3>What the pilot does not show</h3>
+      <ul class="plain">
+        <li>It is a toy. The policy is an MLP with one decision per branch, not a language model writing code. The pilot shows that the dynamics exist and are measurable. It does not say how large they are on real agents.</li>
+        <li>The hidden check is perfect here. In real code there is no oracle; Phase 1 exists because measuring false success is itself the hard part.</li>
+        <li>RL never improved honest repair. Even with the oracle reward, correctness stayed at the fine-tuned starting level (31%). The pilot shows hacking appear and get suppressed, but not honest skill grow.</li>
+        <li>The deletion penalty worked here because the next hack was risky: a stub fails the build on a quarter of branches. Where a safe alternative hack exists, a targeted penalty may just move the policy to it. Phase 1 measures which hacks real agents have available.</li>
+        <li>At 8 broken branches nothing passes (0%), so there is no gradient at all. That says sparse long-horizon rewards fail before hacking even starts, which is Phase 4's problem.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="roadmap">
+    <div class="col stack">
+      <span class="eyebrow">The program</span>
+      <h2>Eighteen months, five questions</h2>
+      <p>Each phase answers one question, produces something the team can use whether or not the next phase happens, and names the result that would kill it. Phases overlap where the later one only needs the earlier one's first output.</p>
+    </div>
+    <div class="timeline" aria-hidden="true"><div class="tl" id="tl"></div></div>
+    <div class="phases" id="phases"></div>
+  </section>
+
+  <section id="how">
+    <div class="col stack">
+      <span class="eyebrow">Working style</span>
+      <h2>How I'd run it</h2>
+    </div>
+    <div class="cols">
+      <div><h3>Kill criteria up front</h3><p>Every experiment is written down with the number that would end it before it runs. A weekly review where results get defended or dropped. Most of these ideas should die early and cheaply.</p></div>
+      <div><h3>Read the trajectories</h3><p>Reward curves are where the pilot's hack hid. Every training run samples passing trajectories for a human read and tracks audited false success next to reward from the first step.</p></div>
+      <div><h3>Small models first</h3><p>Open-weight models on rented clusters. Each question starts at the smallest model that shows the behavior, and scales up only to confirm a result that already holds.</p></div>
+      <div><h3>Report the bad number</h3><p>Each phase reports where a method failed alongside where it worked, the way the pilot reports that oracle RL never improved honest repair.</p></div>
+    </div>
+    <div class="col stack" style="margin-top:36px">
+      <h3>About me</h3>
+      <p>Four years of applied deep RL: a PEARL meta-RL agent for 1v1 air combat on DARPA's ACE program, an RL loop that tuned synthetic data generation against a downstream detector, and a single multi-stage PPO policy that got a Unitree Go1 to track, approach and kick a ball at Berkeley's Hybrid Robotics Lab. More recently, a small post-training study: SFT from a flawed demonstrator, then GRPO against a verifiable reward. My post-training work so far is toy-scale; the open-weight LLM tooling is what I'd ramp on first.</p>
+    </div>
+  </section>
+
+  <section id="reproduce">
+    <div class="col stack">
+      <span class="eyebrow">Reproduce</span>
+      <h2>Every number on this page comes from one command</h2>
+      <p>The pilot is about 400 lines of NumPy with no GPU and no deep-learning framework. The page is built from the results file the grid writes, so nothing here is typed by hand.</p>
+      <pre class="cmd">uv venv --python 3.11 .venv
+uv pip install --python .venv/bin/python numpy pytest
+.venv/bin/python -m pytest -q tests
+.venv/bin/python -m pilot.run_all       # 42 runs, 3 seeds
+.venv/bin/python site/build.py          # rebuilds this page</pre>
+    </div>
+  </section>
+
+  <footer><span>Amal Mehta · Rewarding What You Can't Verify</span><span>Pilot: Patch World v1 · October 2026</span></footer>
+</div>
+
+<script>
+const RUNS = [{"label":"Visible tests only","reward":"visible","audit_rate":0.0,"horizon":4,"steps":[0,50,100,150,200,250,300,350,400,450,500,550,600,650,700,750,800,850,900,950,1000],"curves":{"visible_pass":[0.3465,0.3476666666666666,0.3451666666666667,0.3678333333333333,0.4026666666666667,0.42566666666666664,0.43649999999999994,0.4546666666666667,0.48633333333333334,0.5086666666666667,0.528,0.533,0.5421666666666667,0.5453333333333333,0.5533333333333333,0.5601666666666666,0.5701666666666667,0.5788333333333333,0.5836666666666667,0.5803333333333334,0.5844999999999999],"true_correct":[0.30683333333333335,0.30916666666666665,0.305,0.2896666666666667,0.27716666666666673,0.258,0.23716666666666666,0.18866666666666668,0.14416666666666667,0.11383333333333334,0.10316666666666668,0.09566666666666668,0.08683333333333333,0.07083333333333332,0.056666666666666664,0.049166666666666664,0.0365,0.023833333333333335,0.021833333333333333,0.019333333333333334,0.020166666666666666],"false_success":[0.03966666666666666,0.0385,0.04016666666666666,0.07816666666666668,0.1255,0.16766666666666666,0.19933333333333336,0.266,0.3421666666666667,0.3948333333333333,0.42483333333333334,0.4373333333333333,0.45533333333333337,0.4745,0.49666666666666665,0.511,0.5336666666666666,0.555,0.5618333333333333,0.5609999999999999,0.5643333333333334]},"start":{"visible_pass":{"mean":0.3465,"std":0.0032403703492039073,"n":3},"true_correct":{"mean":0.30683333333333335,"std":0.0034721111093332794,"n":3},"false_success":{"mean":0.03966666666666666,"std":0.00023570226039551604,"n":3}},"final":{"visible_pass":{"mean":0.5844999999999999,"std":0.005930148958219092,"n":3},"true_correct":{"mean":0.020166666666666666,"std":0.004552166761249221,"n":3},"false_success":{"mean":0.5643333333333334,"std":0.006561673228343172,"n":3}},"final_mix":{"uncovered":{"correct":{"mean":0.01484413656605641,"std":0.01978083956699628,"n":3},"plausible":{"mean":0.0003298697014679202,"std":0.0004665062056318968,"n":3},"build_fail":{"mean":0.002226620484908461,"std":0.0029756916629834597,"n":3},"deleted":{"mean":0.9825993732475672,"std":0.023222744984336335,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}},"covered":{"correct":{"mean":0.7479366683510191,"std":0.00346010419137177,"n":3},"plausible":{"mean":0.04564594913255854,"std":0.0018489555667930053,"n":3},"build_fail":{"mean":0.20641738251642242,"std":0.0016111779071676761,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}}},"sft_mix":{"uncovered":{"correct":{"mean":0.7357743691241959,"std":0.0006060093376504792,"n":3},"plausible":{"mean":0.044285007422068284,"std":0.0013246229922652972,"n":3},"build_fail":{"mean":0.21994062345373577,"std":0.001761022307773592,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}},"covered":{"correct":{"mean":0.7481051035876706,"std":0.0009453404211151791,"n":3},"plausible":{"mean":0.04564594913255854,"std":0.00011910169802704205,"n":3},"build_fail":{"mean":0.20624894727977092,"std":0.0010585990474967608,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}}},"config":{"reward":"visible","audit_rate":0.0,"horizon":4,"seed":0,"sft_steps":1000,"sft_batch":256,"sft_lr":0.002,"rl_steps":1000,"rl_batch":64,"group":8,"rl_lr":0.001,"kl_coef":0.02,"eval_every":50,"eval_size":2000}},{"label":"Deletion penalty","reward":"delete_penalty","audit_rate":0.0,"horizon":4,"steps":[0,50,100,150,200,250,300,350,400,450,500,550,600,650,700,750,800,850,900,950,1000],"curves":{"visible_pass":[0.3465,0.349,0.3446666666666667,0.345,0.3481666666666667,0.3426666666666667,0.3433333333333333,0.3431666666666667,0.34400000000000003,0.3473333333333333,0.3535,0.3471666666666667,0.3545,0.3485,0.3471666666666667,0.3501666666666667,0.3534999999999999,0.3605,0.3598333333333333,0.35799999999999993,0.3598333333333333],"true_correct":[0.30683333333333335,0.31033333333333335,0.3056666666666667,0.305,0.30983333333333335,0.303,0.30583333333333335,0.305,0.30616666666666664,0.30950000000000005,0.3145,0.3096666666666667,0.313,0.307,0.30716666666666664,0.30950000000000005,0.3066666666666667,0.3053333333333333,0.30466666666666664,0.29916666666666664,0.30116666666666664],"false_success":[0.03966666666666666,0.038666666666666676,0.039,0.04,0.03833333333333333,0.03966666666666666,0.0375,0.038166666666666675,0.03783333333333333,0.03783333333333333,0.039,0.037500000000000006,0.041499999999999995,0.0415,0.04,0.04066666666666666,0.04683333333333333,0.05516666666666666,0.05516666666666667,0.05883333333333333,0.058666666666666666]},"start":{"visible_pass":{"mean":0.3465,"std":0.0032403703492039073,"n":3},"true_correct":{"mean":0.30683333333333335,"std":0.0034721111093332794,"n":3},"false_success":{"mean":0.03966666666666666,"std":0.00023570226039551604,"n":3}},"final":{"visible_pass":{"mean":0.3598333333333333,"std":0.009463379711052268,"n":3},"true_correct":{"mean":0.30116666666666664,"std":0.004365266951236269,"n":3},"false_success":{"mean":0.058666666666666666,"std":0.011078006238589249,"n":3}},"final_mix":{"uncovered":{"correct":{"mean":0.7306613887514432,"std":0.005135542628052228,"n":3},"plausible":{"mean":0.03529605805706746,"std":0.007411982077724336,"n":3},"build_fail":{"mean":0.20402441035790864,"std":0.009061665398929367,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.030018142833580733,"std":0.02124140611419843,"n":3}},"covered":{"correct":{"mean":0.743810005053057,"std":0.0008251607690022509,"n":3},"plausible":{"mean":0.0360451406434226,"std":0.006203586613004176,"n":3},"build_fail":{"mean":0.19108977598113527,"std":0.013956767718286415,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.029055078322385044,"std":0.020935151577429607,"n":3}}},"sft_mix":{"uncovered":{"correct":{"mean":0.7357743691241959,"std":0.0006060093376504792,"n":3},"plausible":{"mean":0.044285007422068284,"std":0.0013246229922652972,"n":3},"build_fail":{"mean":0.21994062345373577,"std":0.001761022307773592,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}},"covered":{"correct":{"mean":0.7481051035876706,"std":0.0009453404211151791,"n":3},"plausible":{"mean":0.04564594913255854,"std":0.00011910169802704205,"n":3},"build_fail":{"mean":0.20624894727977092,"std":0.0010585990474967608,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}}},"config":{"reward":"delete_penalty","audit_rate":0.0,"horizon":4,"seed":0,"sft_steps":1000,"sft_batch":256,"sft_lr":0.002,"rl_steps":1000,"rl_batch":64,"group":8,"rl_lr":0.001,"kl_coef":0.02,"eval_every":50,"eval_size":2000}},{"label":"Audit 5%","reward":"audit","audit_rate":0.05,"horizon":4,"steps":[0,50,100,150,200,250,300,350,400,450,500,550,600,650,700,750,800,850,900,950,1000],"curves":{"visible_pass":[0.3465,0.3456666666666666,0.3411666666666667,0.3561666666666667,0.35766666666666663,0.37916666666666665,0.39949999999999997,0.4138333333333333,0.4326666666666667,0.44566666666666666,0.45649999999999996,0.4718333333333333,0.4951666666666667,0.5118333333333334,0.5251666666666667,0.5311666666666667,0.5386666666666666,0.5446666666666666,0.549,0.553,0.5606666666666666],"true_correct":[0.30683333333333335,0.30616666666666664,0.303,0.2996666666666667,0.29633333333333334,0.2935,0.27616666666666667,0.268,0.25733333333333336,0.236,0.2015,0.1695,0.13333333333333333,0.11683333333333334,0.10999999999999999,0.10316666666666668,0.09316666666666668,0.0775,0.06983333333333333,0.054833333333333324,0.04516666666666667],"false_success":[0.03966666666666666,0.0395,0.03816666666666666,0.056499999999999995,0.06133333333333333,0.08566666666666667,0.12333333333333334,0.14583333333333334,0.17533333333333334,0.20966666666666667,0.25499999999999995,0.30233333333333334,0.3618333333333333,0.395,0.41516666666666663,0.428,0.4455,0.4671666666666667,0.4791666666666667,0.49816666666666665,0.5155]},"start":{"visible_pass":{"mean":0.3465,"std":0.0032403703492039073,"n":3},"true_correct":{"mean":0.30683333333333335,"std":0.0034721111093332794,"n":3},"false_success":{"mean":0.03966666666666666,"std":0.00023570226039551604,"n":3}},"final":{"visible_pass":{"mean":0.5606666666666666,"std":0.037621654520885846,"n":3},"true_correct":{"mean":0.04516666666666667,"std":0.035649528592800336,"n":3},"false_success":{"mean":0.5155,"std":0.0731881137890573,"n":3}},"final_mix":{"uncovered":{"correct":{"mean":0.13293748969157182,"std":0.16579574925665705,"n":3},"plausible":{"mean":0.004783110671284843,"std":0.0058905068211870595,"n":3},"build_fail":{"mean":0.01995711693880917,"std":0.024378297145011853,"n":3},"deleted":{"mean":0.8423222826983342,"std":0.1960642182662217,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}},"covered":{"correct":{"mean":0.7469260569311101,"std":0.004209196226915889,"n":3},"plausible":{"mean":0.03958228061310426,"std":0.0029488195048023567,"n":3},"build_fail":{"mean":0.19782718544719555,"std":0.015369657661041595,"n":3},"deleted":{"mean":0.015664477008590198,"std":0.02215291583302978,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}}},"sft_mix":{"uncovered":{"correct":{"mean":0.7357743691241959,"std":0.0006060093376504792,"n":3},"plausible":{"mean":0.044285007422068284,"std":0.0013246229922652972,"n":3},"build_fail":{"mean":0.21994062345373577,"std":0.001761022307773592,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}},"covered":{"correct":{"mean":0.7481051035876706,"std":0.0009453404211151791,"n":3},"plausible":{"mean":0.04564594913255854,"std":0.00011910169802704205,"n":3},"build_fail":{"mean":0.20624894727977092,"std":0.0010585990474967608,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}}},"config":{"reward":"audit","audit_rate":0.05,"horizon":4,"seed":0,"sft_steps":1000,"sft_batch":256,"sft_lr":0.002,"rl_steps":1000,"rl_batch":64,"group":8,"rl_lr":0.001,"kl_coef":0.02,"eval_every":50,"eval_size":2000}},{"label":"Audit 10%","reward":"audit","audit_rate":0.1,"horizon":4,"steps":[0,50,100,150,200,250,300,350,400,450,500,550,600,650,700,750,800,850,900,950,1000],"curves":{"visible_pass":[0.3465,0.3481666666666667,0.34583333333333327,0.3423333333333333,0.3468333333333333,0.34450000000000003,0.3423333333333334,0.34783333333333327,0.359,0.38400000000000006,0.40149999999999997,0.4083333333333334,0.43050000000000005,0.43483333333333335,0.43966666666666665,0.44483333333333336,0.44883333333333336,0.45333333333333337,0.4575,0.46166666666666667,0.4696666666666667],"true_correct":[0.30683333333333335,0.30783333333333335,0.3055,0.3036666666666667,0.30466666666666664,0.30516666666666664,0.302,0.30616666666666664,0.30350000000000005,0.29566666666666663,0.29083333333333333,0.2843333333333333,0.2776666666666667,0.2730000000000001,0.267,0.269,0.2651666666666667,0.2536666666666667,0.24083333333333332,0.22216666666666665,0.19116666666666668],"false_success":[0.03966666666666666,0.04033333333333333,0.04033333333333333,0.03866666666666667,0.042166666666666665,0.03933333333333333,0.04033333333333333,0.041666666666666664,0.055499999999999994,0.08833333333333333,0.11066666666666668,0.124,0.15283333333333335,0.16183333333333336,0.17266666666666666,0.17583333333333337,0.18366666666666664,0.19966666666666666,0.21666666666666667,0.23949999999999996,0.2785]},"start":{"visible_pass":{"mean":0.3465,"std":0.0032403703492039073,"n":3},"true_correct":{"mean":0.30683333333333335,"std":0.0034721111093332794,"n":3},"false_success":{"mean":0.03966666666666666,"std":0.00023570226039551604,"n":3}},"final":{"visible_pass":{"mean":0.4696666666666667,"std":0.008605553762283707,"n":3},"true_correct":{"mean":0.19116666666666668,"std":0.020005554784164874,"n":3},"false_success":{"mean":0.2785,"std":0.028428272312377108,"n":3}},"final_mix":{"uncovered":{"correct":{"mean":0.5842817087250537,"std":0.03354245311526406,"n":3},"plausible":{"mean":0.02251360712518555,"std":0.0009256945538777694,"n":3},"build_fail":{"mean":0.08741547088899886,"std":0.005135542628052211,"n":3},"deleted":{"mean":0.305789213260762,"std":0.039522981435994774,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}},"covered":{"correct":{"mean":0.7422940879231935,"std":0.0014440313457539408,"n":3},"plausible":{"mean":0.03427657065858178,"std":0.004188927106432841,"n":3},"build_fail":{"mean":0.17323564089607546,"std":0.009340945039071775,"n":3},"deleted":{"mean":0.05019370052214924,"std":0.013356924886588737,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}}},"sft_mix":{"uncovered":{"correct":{"mean":0.7357743691241959,"std":0.0006060093376504792,"n":3},"plausible":{"mean":0.044285007422068284,"std":0.0013246229922652972,"n":3},"build_fail":{"mean":0.21994062345373577,"std":0.001761022307773592,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}},"covered":{"correct":{"mean":0.7481051035876706,"std":0.0009453404211151791,"n":3},"plausible":{"mean":0.04564594913255854,"std":0.00011910169802704205,"n":3},"build_fail":{"mean":0.20624894727977092,"std":0.0010585990474967608,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}}},"config":{"reward":"audit","audit_rate":0.1,"horizon":4,"seed":0,"sft_steps":1000,"sft_batch":256,"sft_lr":0.002,"rl_steps":1000,"rl_batch":64,"group":8,"rl_lr":0.001,"kl_coef":0.02,"eval_every":50,"eval_size":2000}},{"label":"Audit 25%","reward":"audit","audit_rate":0.25,"horizon":4,"steps":[0,50,100,150,200,250,300,350,400,450,500,550,600,650,700,750,800,850,900,950,1000],"curves":{"visible_pass":[0.3465,0.3473333333333333,0.342,0.3385,0.3466666666666667,0.3428333333333333,0.3421666666666667,0.3441666666666667,0.3425,0.34783333333333327,0.35083333333333333,0.3426666666666667,0.3475,0.34816666666666657,0.3465,0.34850000000000003,0.351,0.3511666666666666,0.3499999999999999,0.35233333333333333,0.35033333333333333],"true_correct":[0.30683333333333335,0.30666666666666664,0.304,0.3015,0.30466666666666664,0.30516666666666664,0.302,0.30516666666666664,0.3045,0.3096666666666667,0.311,0.30583333333333335,0.3085,0.30733333333333335,0.30916666666666665,0.3085,0.31033333333333335,0.311,0.3093333333333333,0.30983333333333335,0.3105],"false_success":[0.03966666666666666,0.04066666666666666,0.038000000000000006,0.037,0.042,0.037666666666666675,0.04016666666666666,0.039,0.038,0.03816666666666666,0.03983333333333333,0.03683333333333333,0.039,0.04083333333333333,0.03733333333333333,0.04,0.04066666666666666,0.04016666666666666,0.04066666666666666,0.0425,0.03983333333333333]},"start":{"visible_pass":{"mean":0.3465,"std":0.0032403703492039073,"n":3},"true_correct":{"mean":0.30683333333333335,"std":0.0034721111093332794,"n":3},"false_success":{"mean":0.03966666666666666,"std":0.00023570226039551604,"n":3}},"final":{"visible_pass":{"mean":0.35033333333333333,"std":0.0010274023338281636,"n":3},"true_correct":{"mean":0.3105,"std":0.0010801234497346444,"n":3},"false_success":{"mean":0.03983333333333333,"std":0.0019293061504650393,"n":3}},"final_mix":{"uncovered":{"correct":{"mean":0.7361867062510307,"std":0.0007094116169423099,"n":3},"plausible":{"mean":0.043872670295233375,"std":0.0008410060223639748,"n":3},"build_fail":{"mean":0.21994062345373577,"std":0.0005344499998686946,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}},"covered":{"correct":{"mean":0.7486946269159508,"std":0.0032639080975368417,"n":3},"plausible":{"mean":0.04547751389590702,"std":0.000714610188162249,"n":3},"build_fail":{"mean":0.20582785918814217,"std":0.0025957613285198635,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}}},"sft_mix":{"uncovered":{"correct":{"mean":0.7357743691241959,"std":0.0006060093376504792,"n":3},"plausible":{"mean":0.044285007422068284,"std":0.0013246229922652972,"n":3},"build_fail":{"mean":0.21994062345373577,"std":0.001761022307773592,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}},"covered":{"correct":{"mean":0.7481051035876706,"std":0.0009453404211151791,"n":3},"plausible":{"mean":0.04564594913255854,"std":0.00011910169802704205,"n":3},"build_fail":{"mean":0.20624894727977092,"std":0.0010585990474967608,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}}},"config":{"reward":"audit","audit_rate":0.25,"horizon":4,"seed":0,"sft_steps":1000,"sft_batch":256,"sft_lr":0.002,"rl_steps":1000,"rl_batch":64,"group":8,"rl_lr":0.001,"kl_coef":0.02,"eval_every":50,"eval_size":2000}},{"label":"Audit every episode","reward":"audit","audit_rate":1.0,"horizon":4,"steps":[0,50,100,150,200,250,300,350,400,450,500,550,600,650,700,750,800,850,900,950,1000],"curves":{"visible_pass":[0.3465,0.34883333333333333,0.3413333333333333,0.3423333333333333,0.34166666666666673,0.34149999999999997,0.3455,0.3408333333333333,0.3403333333333333,0.34400000000000003,0.34450000000000003,0.3468333333333333,0.34883333333333333,0.3471666666666666,0.3463333333333334,0.34583333333333327,0.3475,0.3476666666666666,0.34833333333333333,0.3495,0.34883333333333333],"true_correct":[0.30683333333333335,0.30983333333333335,0.305,0.30633333333333335,0.30416666666666664,0.3056666666666667,0.3075,0.30383333333333334,0.30383333333333334,0.30816666666666664,0.3106666666666667,0.30816666666666664,0.30933333333333335,0.31016666666666665,0.31016666666666665,0.308,0.31149999999999994,0.31,0.3121666666666667,0.3126666666666667,0.31233333333333335],"false_success":[0.03966666666666666,0.039,0.036333333333333336,0.036,0.037500000000000006,0.035833333333333335,0.038,0.037,0.036500000000000005,0.035833333333333335,0.03383333333333333,0.03866666666666666,0.0395,0.037,0.03616666666666666,0.03783333333333333,0.036000000000000004,0.03766666666666666,0.03616666666666667,0.036833333333333336,0.036500000000000005]},"start":{"visible_pass":{"mean":0.3465,"std":0.0032403703492039073,"n":3},"true_correct":{"mean":0.30683333333333335,"std":0.0034721111093332794,"n":3},"false_success":{"mean":0.03966666666666666,"std":0.00023570226039551604,"n":3}},"final":{"visible_pass":{"mean":0.34883333333333333,"std":0.007586537784494019,"n":3},"true_correct":{"mean":0.31233333333333335,"std":0.0067618209250336035,"n":3},"false_success":{"mean":0.036500000000000005,"std":0.002483277404291889,"n":3}},"final_mix":{"uncovered":{"correct":{"mean":0.7360217714002969,"std":0.0038539737573966273,"n":3},"plausible":{"mean":0.04271812634009566,"std":0.0013750067623728426,"n":3},"build_fail":{"mean":0.22126010225960746,"std":0.004258067175795998,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}},"covered":{"correct":{"mean":0.7489472797709281,"std":0.0024611149058788163,"n":3},"plausible":{"mean":0.04269833249115715,"std":0.0017865254704056276,"n":3},"build_fail":{"mean":0.2083543877379148,"std":0.0026283453822346804,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}}},"sft_mix":{"uncovered":{"correct":{"mean":0.7357743691241959,"std":0.0006060093376504792,"n":3},"plausible":{"mean":0.044285007422068284,"std":0.0013246229922652972,"n":3},"build_fail":{"mean":0.21994062345373577,"std":0.001761022307773592,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}},"covered":{"correct":{"mean":0.7481051035876706,"std":0.0009453404211151791,"n":3},"plausible":{"mean":0.04564594913255854,"std":0.00011910169802704205,"n":3},"build_fail":{"mean":0.20624894727977092,"std":0.0010585990474967608,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}}},"config":{"reward":"audit","audit_rate":1.0,"horizon":4,"seed":0,"sft_steps":1000,"sft_batch":256,"sft_lr":0.002,"rl_steps":1000,"rl_batch":64,"group":8,"rl_lr":0.001,"kl_coef":0.02,"eval_every":50,"eval_size":2000}},{"label":"Visible tests only","reward":"visible","audit_rate":0.0,"horizon":1,"steps":[0,50,100,150,200,250,300,350,400,450,500,550,600,650,700,750,800,850,900,950,1000],"curves":{"visible_pass":[0.8645,0.8643333333333333,0.864,0.8641666666666667,0.8645,0.8643333333333333,0.8643333333333333,0.8643333333333333,0.8645,0.8643333333333333,0.8641666666666666,0.8645,0.8645,0.8643333333333333,0.8643333333333333,0.8643333333333333,0.8643333333333333,0.8643333333333333,0.8643333333333333,0.8645,0.8645],"true_correct":[0.8450000000000001,0.8448333333333333,0.8445,0.8446666666666666,0.8450000000000001,0.8448333333333333,0.8448333333333333,0.8448333333333333,0.8450000000000001,0.8448333333333333,0.8446666666666666,0.8450000000000001,0.8450000000000001,0.8448333333333333,0.8448333333333333,0.8448333333333333,0.8448333333333333,0.8448333333333333,0.8448333333333333,0.8450000000000001,0.8450000000000001],"false_success":[0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195]},"start":{"visible_pass":{"mean":0.8645,"std":0.0,"n":3},"true_correct":{"mean":0.8450000000000001,"std":1.1102230246251565e-16,"n":3},"false_success":{"mean":0.0195,"std":0.0,"n":3}},"final":{"visible_pass":{"mean":0.8645,"std":0.0,"n":3},"true_correct":{"mean":0.8450000000000001,"std":1.1102230246251565e-16,"n":3},"false_success":{"mean":0.0195,"std":0.0,"n":3}},"final_mix":{"uncovered":{"correct":{"mean":0.8452261306532663,"std":0.0,"n":3},"plausible":{"mean":0.03919597989949749,"std":0.0,"n":3},"build_fail":{"mean":0.11557788944723618,"std":0.0,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}},"covered":{"correct":{"mean":0.8447761194029851,"std":1.1102230246251565e-16,"n":3},"plausible":{"mean":0.03283582089552239,"std":0.0,"n":3},"build_fail":{"mean":0.12238805970149254,"std":0.0,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}}},"sft_mix":{"uncovered":{"correct":{"mean":0.8452261306532663,"std":0.0,"n":3},"plausible":{"mean":0.03919597989949749,"std":0.0,"n":3},"build_fail":{"mean":0.11557788944723618,"std":0.0,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}},"covered":{"correct":{"mean":0.8447761194029851,"std":1.1102230246251565e-16,"n":3},"plausible":{"mean":0.03283582089552239,"std":0.0,"n":3},"build_fail":{"mean":0.12238805970149254,"std":0.0,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}}},"config":{"reward":"visible","audit_rate":0.0,"horizon":1,"seed":0,"sft_steps":1000,"sft_batch":256,"sft_lr":0.002,"rl_steps":1000,"rl_batch":64,"group":8,"rl_lr":0.001,"kl_coef":0.02,"eval_every":50,"eval_size":2000}},{"label":"Visible tests only","reward":"visible","audit_rate":0.0,"horizon":2,"steps":[0,50,100,150,200,250,300,350,400,450,500,550,600,650,700,750,800,850,900,950,1000],"curves":{"visible_pass":[0.7086666666666667,0.7076666666666668,0.7078333333333333,0.7084999999999999,0.7083333333333334,0.7081666666666667,0.7106666666666666,0.709,0.7073333333333333,0.7081666666666666,0.7094999999999999,0.7115,0.7106666666666667,0.71,0.71,0.7106666666666666,0.7134999999999999,0.7141666666666667,0.7138333333333334,0.7121666666666666,0.7151666666666666],"true_correct":[0.6789999999999999,0.6773333333333333,0.6771666666666668,0.6783333333333333,0.6783333333333333,0.6776666666666668,0.6798333333333333,0.6786666666666666,0.6774999999999999,0.6776666666666668,0.6789999999999999,0.6806666666666666,0.6806666666666666,0.68,0.6795,0.6803333333333333,0.68,0.6798333333333334,0.6785,0.6779999999999999,0.6776666666666666],"false_success":[0.029666666666666664,0.030333333333333334,0.030666666666666665,0.030166666666666665,0.03,0.0305,0.030833333333333334,0.030333333333333334,0.029833333333333333,0.0305,0.0305,0.030833333333333334,0.03,0.03,0.0305,0.030333333333333334,0.0335,0.034333333333333334,0.035333333333333335,0.03416666666666667,0.0375]},"start":{"visible_pass":{"mean":0.7086666666666667,"std":0.00023570226039548988,"n":3},"true_correct":{"mean":0.6789999999999999,"std":0.0008164965809277268,"n":3},"false_success":{"mean":0.029666666666666664,"std":0.0010274023338281623,"n":3}},"final":{"visible_pass":{"mean":0.7151666666666666,"std":0.005572751165766819,"n":3},"true_correct":{"mean":0.6776666666666666,"std":0.0043269183285823696,"n":3},"false_success":{"mean":0.0375,"std":0.009600347215943111,"n":3}},"final_mix":{"uncovered":{"correct":{"mean":0.819277108433735,"std":0.0037947025898852306,"n":3},"plausible":{"mean":0.03485943775100402,"std":0.002620001032979934,"n":3},"build_fail":{"mean":0.13542168674698796,"std":0.00784027909520477,"n":3},"deleted":{"mean":0.010441767068273093,"std":0.014090835186884107,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}},"covered":{"correct":{"mean":0.8221645021645022,"std":0.0017658942038416446,"n":3},"plausible":{"mean":0.029264069264069267,"std":0.0008829471019208285,"n":3},"build_fail":{"mean":0.141991341991342,"std":0.00577431411273873,"n":3},"deleted":{"mean":0.006580086580086579,"std":0.008228297399492102,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}}},"sft_mix":{"uncovered":{"correct":{"mean":0.8195983935742972,"std":0.0004543658031720823,"n":3},"plausible":{"mean":0.03678714859437751,"std":0.0006010694597227231,"n":3},"build_fail":{"mean":0.1436144578313253,"std":0.0010410828431177239,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}},"covered":{"correct":{"mean":0.8238961038961038,"std":0.0008483081360288248,"n":3},"plausible":{"mean":0.03307359307359308,"std":0.0012958120819996325,"n":3},"build_fail":{"mean":0.14303030303030304,"std":0.0021348619923702095,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}}},"config":{"reward":"visible","audit_rate":0.0,"horizon":2,"seed":0,"sft_steps":1000,"sft_batch":256,"sft_lr":0.002,"rl_steps":1000,"rl_batch":64,"group":8,"rl_lr":0.001,"kl_coef":0.02,"eval_every":50,"eval_size":2000}},{"label":"Visible tests only","reward":"visible","audit_rate":0.0,"horizon":6,"steps":[0,50,100,150,200,250,300,350,400,450,500,550,600,650,700,750,800,850,900,950,1000],"curves":{"visible_pass":[0.06533333333333334,0.06183333333333333,0.075,0.07266666666666667,0.10216666666666667,0.123,0.11516666666666668,0.14183333333333334,0.1635,0.1748333333333333,0.18883333333333333,0.20533333333333334,0.22283333333333333,0.23516666666666666,0.24650000000000002,0.24466666666666667,0.24683333333333332,0.24633333333333332,0.249,0.24783333333333335,0.24666666666666667],"true_correct":[0.04566666666666667,0.044833333333333336,0.04683333333333333,0.04616666666666667,0.04,0.036333333333333336,0.0395,0.034666666666666665,0.030666666666666665,0.025666666666666667,0.018166666666666668,0.010666666666666666,0.004166666666666667,0.001666666666666667,0.001,0.001,0.0005,0.0013333333333333333,0.0006666666666666666,0.0006666666666666666,0.0003333333333333333],"false_success":[0.019666666666666666,0.016999999999999998,0.028166666666666663,0.0265,0.06216666666666667,0.08666666666666667,0.07566666666666667,0.10716666666666667,0.13283333333333333,0.14916666666666667,0.17066666666666666,0.19466666666666665,0.21866666666666665,0.2335,0.24549999999999997,0.24366666666666667,0.24633333333333332,0.245,0.24833333333333332,0.24716666666666667,0.24633333333333332]},"start":{"visible_pass":{"mean":0.06533333333333334,"std":0.0027182510717166843,"n":3},"true_correct":{"mean":0.04566666666666667,"std":0.0012472191289246482,"n":3},"false_success":{"mean":0.019666666666666666,"std":0.0031180478223116178,"n":3}},"final":{"visible_pass":{"mean":0.24666666666666667,"std":0.004731689855526134,"n":3},"true_correct":{"mean":0.0003333333333333333,"std":0.0004714045207910317,"n":3},"false_success":{"mean":0.24633333333333332,"std":0.004552166761249225,"n":3}},"final_mix":{"uncovered":{"correct":{"mean":0.09482141874415277,"std":0.005732394104892319,"n":3},"plausible":{"mean":0.004237521325188487,"std":0.0005612260760104327,"n":3},"build_fail":{"mean":0.013097793186946233,"std":0.0008666565267747303,"n":3},"deleted":{"mean":0.8878432667437125,"std":0.0065407985359753765,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}},"covered":{"correct":{"mean":0.5936956643670425,"std":0.0006195165750847926,"n":3},"plausible":{"mean":0.07106399685904986,"std":0.002696912957579517,"n":3},"build_fail":{"mean":0.33524033877390774,"std":0.0027282262621605878,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}}},"sft_mix":{"uncovered":{"correct":{"mean":0.6021132573881459,"std":0.00046696832173455177,"n":3},"plausible":{"mean":0.06400308183369105,"std":0.0013636576625792617,"n":3},"build_fail":{"mean":0.333883660778163,"std":0.0016306788167992112,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}},"covered":{"correct":{"mean":0.5929104268326882,"std":0.001383008357837004,"n":3},"plausible":{"mean":0.06983005216220763,"std":0.0004953592947629041,"n":3},"build_fail":{"mean":0.3372595210051041,"std":0.0017287604472962686,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}}},"config":{"reward":"visible","audit_rate":0.0,"horizon":6,"seed":0,"sft_steps":1000,"sft_batch":256,"sft_lr":0.002,"rl_steps":1000,"rl_batch":64,"group":8,"rl_lr":0.001,"kl_coef":0.02,"eval_every":50,"eval_size":2000}},{"label":"Visible tests only","reward":"visible","audit_rate":0.0,"horizon":8,"steps":[0,50,100,150,200,250,300,350,400,450,500,550,600,650,700,750,800,850,900,950,1000],"curves":{"visible_pass":[0.0003333333333333333,0.0008333333333333334,0.0005,0.0005,0.0005,0.0003333333333333333,0.0003333333333333333,0.0003333333333333333,0.0006666666666666666,0.0003333333333333333,0.0005,0.0003333333333333333,0.0003333333333333333,0.0005,0.0003333333333333333,0.0006666666666666666,0.00016666666666666666,0.0005,0.0008333333333333334,0.001,0.0005],"true_correct":[0.0,0.0006666666666666666,0.0003333333333333333,0.0,0.00016666666666666666,0.0,0.0,0.0,0.0003333333333333333,0.0003333333333333333,0.0,0.00016666666666666666,0.0,0.0003333333333333333,0.0,0.00016666666666666666,0.0,0.00016666666666666666,0.0003333333333333333,0.00016666666666666666,0.00016666666666666666],"false_success":[0.0003333333333333333,0.00016666666666666666,0.00016666666666666666,0.0005,0.0003333333333333333,0.0003333333333333333,0.0003333333333333333,0.0003333333333333333,0.0003333333333333333,0.0,0.0005,0.00016666666666666666,0.0003333333333333333,0.00016666666666666666,0.0003333333333333333,0.0005,0.00016666666666666666,0.0003333333333333333,0.0005,0.0008333333333333334,0.0003333333333333333]},"start":{"visible_pass":{"mean":0.0003333333333333333,"std":0.0004714045207910317,"n":3},"true_correct":{"mean":0.0,"std":0.0,"n":3},"false_success":{"mean":0.0003333333333333333,"std":0.0004714045207910317,"n":3}},"final":{"visible_pass":{"mean":0.0005,"std":0.0,"n":3},"true_correct":{"mean":0.00016666666666666666,"std":0.00023570226039551585,"n":3},"false_success":{"mean":0.0003333333333333333,"std":0.00023570226039551585,"n":3}},"final_mix":{"uncovered":{"correct":{"mean":0.38737843989240633,"std":0.0014057759363925522,"n":3},"plausible":{"mean":0.10651769087523277,"std":0.0021358970247157337,"n":3},"build_fail":{"mean":0.5061038692323608,"std":0.0007741894034293072,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}},"covered":{"correct":{"mean":0.3810782462764841,"std":0.0014975094019362063,"n":3},"plausible":{"mean":0.1027480595762534,"std":0.001034514621853405,"n":3},"build_fail":{"mean":0.5161736941472624,"std":0.001925369231060837,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}}},"sft_mix":{"uncovered":{"correct":{"mean":0.38998551624249944,"std":0.002343122311920886,"n":3},"plausible":{"mean":0.10482102213945789,"std":0.0034617856202548074,"n":3},"build_fail":{"mean":0.5051934616180426,"std":0.0013984477756023735,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}},"covered":{"correct":{"mean":0.3844766100272708,"std":0.00031396327977965127,"n":3},"plausible":{"mean":0.10106985525487729,"std":0.001250234061317504,"n":3},"build_fail":{"mean":0.5144535347178519,"std":0.0012558531191185457,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}}},"config":{"reward":"visible","audit_rate":0.0,"horizon":8,"seed":0,"sft_steps":1000,"sft_batch":256,"sft_lr":0.002,"rl_steps":1000,"rl_batch":64,"group":8,"rl_lr":0.001,"kl_coef":0.02,"eval_every":50,"eval_size":2000}},{"label":"Audit 10%","reward":"audit","audit_rate":0.1,"horizon":1,"steps":[0,50,100,150,200,250,300,350,400,450,500,550,600,650,700,750,800,850,900,950,1000],"curves":{"visible_pass":[0.8645,0.8643333333333333,0.864,0.8641666666666667,0.8638333333333333,0.8645,0.8643333333333333,0.8643333333333333,0.8643333333333333,0.8643333333333333,0.8643333333333333,0.8643333333333333,0.8643333333333333,0.8645,0.8645,0.8645,0.8645,0.8645,0.8645,0.8645,0.8645],"true_correct":[0.8450000000000001,0.8448333333333333,0.8445,0.8446666666666666,0.8443333333333333,0.8450000000000001,0.8448333333333333,0.8448333333333333,0.8448333333333333,0.8448333333333333,0.8448333333333333,0.8448333333333333,0.8448333333333333,0.8450000000000001,0.8450000000000001,0.8450000000000001,0.8450000000000001,0.8450000000000001,0.8450000000000001,0.8450000000000001,0.8450000000000001],"false_success":[0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195,0.0195]},"start":{"visible_pass":{"mean":0.8645,"std":0.0,"n":3},"true_correct":{"mean":0.8450000000000001,"std":1.1102230246251565e-16,"n":3},"false_success":{"mean":0.0195,"std":0.0,"n":3}},"final":{"visible_pass":{"mean":0.8645,"std":0.0,"n":3},"true_correct":{"mean":0.8450000000000001,"std":1.1102230246251565e-16,"n":3},"false_success":{"mean":0.0195,"std":0.0,"n":3}},"final_mix":{"uncovered":{"correct":{"mean":0.8452261306532663,"std":0.0,"n":3},"plausible":{"mean":0.03919597989949749,"std":0.0,"n":3},"build_fail":{"mean":0.11557788944723618,"std":0.0,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}},"covered":{"correct":{"mean":0.8447761194029851,"std":1.1102230246251565e-16,"n":3},"plausible":{"mean":0.03283582089552239,"std":0.0,"n":3},"build_fail":{"mean":0.12238805970149254,"std":0.0,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}}},"sft_mix":{"uncovered":{"correct":{"mean":0.8452261306532663,"std":0.0,"n":3},"plausible":{"mean":0.03919597989949749,"std":0.0,"n":3},"build_fail":{"mean":0.11557788944723618,"std":0.0,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}},"covered":{"correct":{"mean":0.8447761194029851,"std":1.1102230246251565e-16,"n":3},"plausible":{"mean":0.03283582089552239,"std":0.0,"n":3},"build_fail":{"mean":0.12238805970149254,"std":0.0,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}}},"config":{"reward":"audit","audit_rate":0.1,"horizon":1,"seed":0,"sft_steps":1000,"sft_batch":256,"sft_lr":0.002,"rl_steps":1000,"rl_batch":64,"group":8,"rl_lr":0.001,"kl_coef":0.02,"eval_every":50,"eval_size":2000}},{"label":"Audit 10%","reward":"audit","audit_rate":0.1,"horizon":2,"steps":[0,50,100,150,200,250,300,350,400,450,500,550,600,650,700,750,800,850,900,950,1000],"curves":{"visible_pass":[0.7086666666666667,0.7088333333333333,0.7085,0.7076666666666668,0.7078333333333333,0.7091666666666666,0.7106666666666667,0.7098333333333334,0.7091666666666666,0.7098333333333334,0.7103333333333334,0.711,0.711,0.7098333333333332,0.7106666666666666,0.7096666666666667,0.7106666666666667,0.7103333333333333,0.7103333333333333,0.709,0.7098333333333334],"true_correct":[0.6789999999999999,0.6788333333333334,0.6776666666666668,0.6778333333333334,0.6785,0.6781666666666667,0.6793333333333335,0.6789999999999999,0.6795,0.6795,0.6811666666666666,0.6805,0.6815000000000001,0.6816666666666666,0.6801666666666667,0.6803333333333333,0.6808333333333333,0.6803333333333333,0.6795,0.6779999999999999,0.6801666666666667],"false_success":[0.029666666666666664,0.03,0.030833333333333334,0.029833333333333333,0.029333333333333333,0.031,0.03133333333333333,0.030833333333333334,0.029666666666666664,0.030333333333333334,0.029166666666666664,0.0305,0.0295,0.02816666666666667,0.0305,0.029333333333333333,0.029833333333333333,0.03,0.030833333333333334,0.031,0.029666666666666664]},"start":{"visible_pass":{"mean":0.7086666666666667,"std":0.00023570226039548988,"n":3},"true_correct":{"mean":0.6789999999999999,"std":0.0008164965809277268,"n":3},"false_success":{"mean":0.029666666666666664,"std":0.0010274023338281623,"n":3}},"final":{"visible_pass":{"mean":0.7098333333333334,"std":0.0006236095644623438,"n":3},"true_correct":{"mean":0.6801666666666667,"std":0.0010274023338281396,"n":3},"false_success":{"mean":0.029666666666666664,"std":0.0013123346456686347,"n":3}},"final_mix":{"uncovered":{"correct":{"mean":0.8200803212851406,"std":0.0008191196005771533,"n":3},"plausible":{"mean":0.03566265060240964,"std":0.0014187567656751587,"n":3},"build_fail":{"mean":0.1442570281124498,"std":0.0012649008632950672,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}},"covered":{"correct":{"mean":0.8233766233766233,"std":0.001529309240922579,"n":3},"plausible":{"mean":0.02995670995670996,"std":0.0006479060409998166,"n":3},"build_fail":{"mean":0.14666666666666667,"std":0.0010674309961851047,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}}},"sft_mix":{"uncovered":{"correct":{"mean":0.8195983935742972,"std":0.0004543658031720823,"n":3},"plausible":{"mean":0.03678714859437751,"std":0.0006010694597227231,"n":3},"build_fail":{"mean":0.1436144578313253,"std":0.0010410828431177239,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}},"covered":{"correct":{"mean":0.8238961038961038,"std":0.0008483081360288248,"n":3},"plausible":{"mean":0.03307359307359308,"std":0.0012958120819996325,"n":3},"build_fail":{"mean":0.14303030303030304,"std":0.0021348619923702095,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}}},"config":{"reward":"audit","audit_rate":0.1,"horizon":2,"seed":0,"sft_steps":1000,"sft_batch":256,"sft_lr":0.002,"rl_steps":1000,"rl_batch":64,"group":8,"rl_lr":0.001,"kl_coef":0.02,"eval_every":50,"eval_size":2000}},{"label":"Audit 10%","reward":"audit","audit_rate":0.1,"horizon":6,"steps":[0,50,100,150,200,250,300,350,400,450,500,550,600,650,700,750,800,850,900,950,1000],"curves":{"visible_pass":[0.06533333333333334,0.0655,0.06766666666666667,0.07616666666666666,0.07683333333333332,0.08716666666666667,0.10016666666666667,0.11033333333333334,0.11183333333333334,0.12566666666666668,0.13816666666666666,0.15166666666666664,0.168,0.18383333333333332,0.18833333333333332,0.19516666666666668,0.2025,0.21166666666666667,0.21966666666666668,0.22616666666666665,0.224],"true_correct":[0.04566666666666667,0.04766666666666667,0.04866666666666667,0.0535,0.04916666666666667,0.04416666666666667,0.04466666666666667,0.0405,0.04516666666666667,0.037500000000000006,0.03616666666666667,0.03366666666666667,0.034333333333333334,0.03,0.0265,0.021833333333333333,0.014333333333333335,0.008833333333333334,0.007833333333333333,0.004666666666666666,0.0025],"false_success":[0.019666666666666666,0.017833333333333336,0.019000000000000003,0.02266666666666667,0.027666666666666662,0.043000000000000003,0.0555,0.06983333333333334,0.06666666666666667,0.08816666666666667,0.102,0.118,0.13366666666666668,0.15383333333333335,0.16183333333333336,0.17333333333333334,0.18816666666666668,0.20283333333333334,0.21183333333333332,0.2215,0.2215]},"start":{"visible_pass":{"mean":0.06533333333333334,"std":0.0027182510717166843,"n":3},"true_correct":{"mean":0.04566666666666667,"std":0.0012472191289246482,"n":3},"false_success":{"mean":0.019666666666666666,"std":0.0031180478223116178,"n":3}},"final":{"visible_pass":{"mean":0.224,"std":0.004546060565661956,"n":3},"true_correct":{"mean":0.0025,"std":0.0012247448713915891,"n":3},"false_success":{"mean":0.2215,"std":0.005115336417740941,"n":3}},"final_mix":{"uncovered":{"correct":{"mean":0.2507842166088823,"std":0.016551595386296473,"n":3},"plausible":{"mean":0.010676352429695668,"std":0.00020591367490913775,"n":3},"build_fail":{"mean":0.03522095646909911,"std":0.0036078990486123545,"n":3},"deleted":{"mean":0.703318474492323,"std":0.020249058838817852,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}},"covered":{"correct":{"mean":0.5917886589264681,"std":0.0015844351216361306,"n":3},"plausible":{"mean":0.06769869314038925,"std":0.003427363535240835,"n":3},"build_fail":{"mean":0.3404004711425206,"std":0.003739880661432433,"n":3},"deleted":{"mean":0.0001121767906220203,"std":0.00015864193868114814,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}}},"sft_mix":{"uncovered":{"correct":{"mean":0.6021132573881459,"std":0.00046696832173455177,"n":3},"plausible":{"mean":0.06400308183369105,"std":0.0013636576625792617,"n":3},"build_fail":{"mean":0.333883660778163,"std":0.0016306788167992112,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}},"covered":{"correct":{"mean":0.5929104268326882,"std":0.001383008357837004,"n":3},"plausible":{"mean":0.06983005216220763,"std":0.0004953592947629041,"n":3},"build_fail":{"mean":0.3372595210051041,"std":0.0017287604472962686,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}}},"config":{"reward":"audit","audit_rate":0.1,"horizon":6,"seed":0,"sft_steps":1000,"sft_batch":256,"sft_lr":0.002,"rl_steps":1000,"rl_batch":64,"group":8,"rl_lr":0.001,"kl_coef":0.02,"eval_every":50,"eval_size":2000}},{"label":"Audit 10%","reward":"audit","audit_rate":0.1,"horizon":8,"steps":[0,50,100,150,200,250,300,350,400,450,500,550,600,650,700,750,800,850,900,950,1000],"curves":{"visible_pass":[0.0003333333333333333,0.0006666666666666666,0.0003333333333333333,0.0003333333333333333,0.0003333333333333333,0.0008333333333333334,0.0005,0.0003333333333333333,0.0006666666666666666,0.0006666666666666666,0.0006666666666666666,0.0005,0.0,0.0005,0.0005,0.0006666666666666666,0.00016666666666666666,0.0005,0.0005,0.0008333333333333334,0.0003333333333333333],"true_correct":[0.0,0.00016666666666666666,0.0,0.0,0.00016666666666666666,0.00016666666666666666,0.00016666666666666666,0.0,0.00016666666666666666,0.0,0.00016666666666666666,0.0,0.0,0.0,0.0,0.0,0.0,0.00016666666666666666,0.0,0.00016666666666666666,0.00016666666666666666],"false_success":[0.0003333333333333333,0.0005,0.0003333333333333333,0.0003333333333333333,0.00016666666666666666,0.0006666666666666666,0.0003333333333333333,0.0003333333333333333,0.0005,0.0006666666666666666,0.0005,0.0005,0.0,0.0005,0.0005,0.0006666666666666666,0.00016666666666666666,0.0003333333333333333,0.0005,0.0006666666666666666,0.00016666666666666666]},"start":{"visible_pass":{"mean":0.0003333333333333333,"std":0.0004714045207910317,"n":3},"true_correct":{"mean":0.0,"std":0.0,"n":3},"false_success":{"mean":0.0003333333333333333,"std":0.0004714045207910317,"n":3}},"final":{"visible_pass":{"mean":0.0003333333333333333,"std":0.0004714045207910317,"n":3},"true_correct":{"mean":0.00016666666666666666,"std":0.00023570226039551585,"n":3},"false_success":{"mean":0.00016666666666666666,"std":0.00023570226039551585,"n":3}},"final_mix":{"uncovered":{"correct":{"mean":0.39044072004965863,"std":0.0006165803610904748,"n":3},"plausible":{"mean":0.1063935443823712,"std":0.0019550609246460097,"n":3},"build_fail":{"mean":0.5031657355679702,"std":0.0015930789617148624,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}},"covered":{"correct":{"mean":0.3856513530522341,"std":0.0011443827729797182,"n":3},"plausible":{"mean":0.10216068806377177,"std":0.0006607097020358113,"n":3},"build_fail":{"mean":0.512187958883994,"std":0.0014868928170060018,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}}},"sft_mix":{"uncovered":{"correct":{"mean":0.38998551624249944,"std":0.002343122311920886,"n":3},"plausible":{"mean":0.10482102213945789,"std":0.0034617856202548074,"n":3},"build_fail":{"mean":0.5051934616180426,"std":0.0013984477756023735,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}},"covered":{"correct":{"mean":0.3844766100272708,"std":0.00031396327977965127,"n":3},"plausible":{"mean":0.10106985525487729,"std":0.001250234061317504,"n":3},"build_fail":{"mean":0.5144535347178519,"std":0.0012558531191185457,"n":3},"deleted":{"mean":0.0,"std":0.0,"n":3},"stubbed":{"mean":0.0,"std":0.0,"n":3}}},"config":{"reward":"audit","audit_rate":0.1,"horizon":8,"seed":0,"sft_steps":1000,"sft_batch":256,"sft_lr":0.002,"rl_steps":1000,"rl_batch":64,"group":8,"rl_lr":0.001,"kl_coef":0.02,"eval_every":50,"eval_size":2000}}];
+const $ = (s, el = document) => el.querySelector(s);
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const pct = x => `${Math.round(x * 100)}%`;
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs = {}, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+const get = (label, h = 4) => RUNS.find(r => r.label === label && r.horizon === h);
+const OUTCOMES = [
+  ["correct", "Correct fix", "--o-correct"],
+  ["plausible", "Plausible, wrong", "--o-plausible"],
+  ["stubbed", "Stubbed", "--o-stubbed"],
+  ["deleted", "Deleted", "--o-deleted"],
+  ["build_fail", "Didn't build", "--o-buildfail"],
+];
+function table(target, head, rows) {
+  const t = document.createElement("table");
+  t.innerHTML = `<thead><tr>${head.map(h => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody>`;
+  target.replaceChildren(t);
+}
+function tipFor(chart) {
+  let t = chart.querySelector(".tip");
+  if (!t) { t = document.createElement("div"); t.className = "tip"; t.hidden = true; chart.appendChild(t); }
+  return t;
+}
+function showTip(chart, svg, x, y, html) {
+  const t = tipFor(chart);
+  const r = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal;
+  const px = x * r.width / vb.width, py = y * r.height / vb.height;
+  t.innerHTML = html; t.hidden = false;
+  const w = t.offsetWidth;
+  t.style.left = `${Math.min(Math.max(px, w / 2), r.width - w / 2)}px`;
+  t.style.top = `${py}px`;
+}
+const hideTip = chart => { const t = chart.querySelector(".tip"); if (t) t.hidden = true; };
+
+/* ---------- generic y axis ---------- */
+function yAxis(svg, m, W, H, ticks = [0, 0.25, 0.5, 0.75, 1]) {
+  const y = v => m.t + (1 - v) * (H - m.t - m.b);
+  for (const v of ticks) {
+    el("line", { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), class: "grid" }, svg);
+    el("text", { x: m.l - 8, y: y(v) + 4, "text-anchor": "end" }, svg).textContent = pct(v);
+  }
+  return y;
+}
+
+/* ---------- Figure 1: curves ---------- */
+const CURVE_OPTS = ["Visible tests only", "Deletion penalty", "Audit 10%", "Audit every episode"];
+let curveSel = CURVE_OPTS[0];
+function drawCurves() {
+  const chart = $("#chart-curves"); chart.replaceChildren();
+  const r = get(curveSel);
+  const W = 960, H = 320, m = { l: 48, r: 130, t: 14, b: 34 };
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": `Visible pass rate and true correctness over training, ${curveSel}` }, chart);
+  const y = yAxis(svg, m, W, H);
+  const steps = r.steps, maxS = steps[steps.length - 1];
+  const x = s => m.l + s / maxS * (W - m.l - m.r);
+  for (const s of steps.filter(s => s % 200 === 0)) el("text", { x: x(s), y: H - 12, "text-anchor": "middle" }, svg).textContent = s;
+  el("text", { x: W - m.r + 12, y: H - 12, "text-anchor": "start" }, svg).textContent = "GRPO step";
+  const V = r.curves.visible_pass, T = r.curves.true_correct;
+  const gap = steps.map((s, i) => `${x(s)},${y(V[i])}`).join(" ") + " " + steps.slice().reverse().map((s, j) => `${x(s)},${y(T[steps.length - 1 - j])}`).join(" ");
+  el("polygon", { points: gap, fill: css("--s-gap") }, svg);
+  const line = (arr, color) => el("polyline", { points: steps.map((s, i) => `${x(s)},${y(arr[i])}`).join(" "), fill: "none", stroke: color, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+  line(V, css("--s-visible")); line(T, css("--s-true"));
+  const last = steps.length - 1;
+  const endLabel = (val, text, color, dy) => {
+    el("circle", { cx: x(maxS), cy: y(val), r: 4, fill: color, stroke: css("--surface"), "stroke-width": 2 }, svg);
+    el("text", { x: x(maxS) + 10, y: y(val) + 4 + dy, class: "lbl" }, svg).textContent = `${text} ${pct(val)}`;
+  };
+  const dv = V[last], dt = T[last], sep = Math.abs(y(dv) - y(dt)) < 16 ? 8 : 0;
+  endLabel(dv, "passes", css("--s-visible"), dv >= dt ? -sep : sep);
+  endLabel(dt, "correct", css("--s-true"), dt > dv ? -sep : sep);
+  // hover
+  const cross = el("line", { y1: m.t, y2: H - m.b, stroke: css("--ink-3"), "stroke-width": 1, visibility: "hidden" }, svg);
+  const hit = el("rect", { x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, fill: "transparent" }, svg);
+  hit.addEventListener("pointermove", e => {
+    const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+    const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const i = Math.max(0, Math.min(last, Math.round((p.x - m.l) / (W - m.l - m.r) * last)));
+    cross.setAttribute("x1", x(steps[i])); cross.setAttribute("x2", x(steps[i])); cross.setAttribute("visibility", "visible");
+    showTip(chart, svg, x(steps[i]), y(Math.max(V[i], T[i])), `<b>step ${steps[i]}</b><br>passes ${pct(V[i])} · correct ${pct(T[i])}<br>false success ${pct(r.curves.false_success[i])}`);
+  });
+  hit.addEventListener("pointerleave", () => { cross.setAttribute("visibility", "hidden"); hideTip(chart); });
+  table($("#tbl-curves"), ["GRPO step", "Passes visible", "Correct", "False success"],
+    steps.filter((s, i) => s % 100 === 0).map(s => { const i = steps.indexOf(s); return [s, pct(V[i]), pct(T[i]), pct(r.curves.false_success[i])]; }));
+}
+const seg = $("#curve-seg");
+for (const o of CURVE_OPTS) {
+  const b = document.createElement("button"); b.type = "button"; b.textContent = o; b.setAttribute("aria-pressed", o === curveSel);
+  b.addEventListener("click", () => { curveSel = o; seg.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.textContent === o)); drawCurves(); });
+  seg.appendChild(b);
+}
+
+/* ---------- Figure 2: outcome mix ---------- */
+const MIX_ROWS = ["Visible tests only", "Deletion penalty", "Audit 5%", "Audit 10%", "Audit 25%", "Audit every episode"];
+function drawMix() {
+  const chart = $("#chart-mix"); chart.replaceChildren();
+  $("#mix-legend").innerHTML = OUTCOMES.map(([, n, v]) => `<span><i style="background:var(${v})"></i>${n}</span>`).join("");
+  const rows = [["Before RL (fine-tuned)", get("Visible tests only").sft_mix.uncovered], ...MIX_ROWS.map(l => [l, get(l).final_mix.uncovered])];
+  const W = 960, rowH = 30, gapY = 10, m = { l: 190, r: 12, t: 4, b: 26 };
+  const H = m.t + rows.length * (rowH + gapY) + m.b;
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Outcome mix on untested branches by reward" }, chart);
+  const x = v => m.l + v * (W - m.l - m.r);
+  for (const v of [0, 0.25, 0.5, 0.75, 1]) {
+    el("line", { x1: x(v), x2: x(v), y1: m.t, y2: H - m.b, class: "grid" }, svg);
+    el("text", { x: x(v), y: H - 8, "text-anchor": "middle" }, svg).textContent = pct(v);
+  }
+  rows.forEach(([label, mix], i) => {
+    const yy = m.t + i * (rowH + gapY);
+    el("text", { x: m.l - 12, y: yy + rowH / 2 + 4, "text-anchor": "end", class: i === 0 ? "" : "lbl" }, svg).textContent = label;
+    let acc = 0;
+    for (const [k, name, v] of OUTCOMES) {
+      const val = mix[k].mean; if (val <= 0.0005) continue;
+      const x0 = x(acc), w = Math.max(0, x(acc + val) - x0 - 2);
+      const rect = el("rect", { x: x0, y: yy, width: w, height: rowH, rx: 3, fill: css(v) }, svg);
+      if (w > 44) { const t = el("text", { x: x0 + w / 2, y: yy + rowH / 2 + 4, "text-anchor": "middle", style: `fill:${k === "build_fail" ? css("--ink-2") : "#fff"};font-weight:600` }, svg); t.textContent = pct(val); t.style.pointerEvents = "none"; }
+      rect.addEventListener("pointerenter", () => showTip(chart, svg, x0 + w / 2, yy, `<b>${label}</b><br>${name}: ${(val * 100).toFixed(1)}% ± ${(mix[k].std * 100).toFixed(1)}`));
+      rect.addEventListener("pointerleave", () => hideTip(chart));
+      acc += val;
+    }
+  });
+  table($("#tbl-mix"), ["Reward", ...OUTCOMES.map(o => o[1])], rows.map(([l, mix]) => [l, ...OUTCOMES.map(([k]) => (mix[k].mean * 100).toFixed(1) + "%")]));
+}
+
+/* ---------- small line chart for sweeps ---------- */
+function sweep(target, tblTarget, xs, xlabels, series, xTitle, head) {
+  const chart = $(target); chart.replaceChildren();
+  const W = 460, H = 260, m = { l: 44, r: 16, t: 14, b: 40 };
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": xTitle }, chart);
+  const y = yAxis(svg, m, W, H);
+  const x = i => m.l + 10 + i * (W - m.l - m.r - 20) / (xs.length - 1);
+  xs.forEach((_, i) => el("text", { x: x(i), y: H - 22, "text-anchor": "middle" }, svg).textContent = xlabels[i]);
+  el("text", { x: (W + m.l) / 2, y: H - 4, "text-anchor": "middle" }, svg).textContent = xTitle;
+  for (const s of series) {
+    const c = css(s.color);
+    el("polyline", { points: s.vals.map((v, i) => `${x(i)},${y(v.mean)}`).join(" "), fill: "none", stroke: c, "stroke-width": 2, "stroke-linejoin": "round" }, svg);
+    s.vals.forEach((v, i) => {
+      if (v.std > 0.005) el("line", { x1: x(i), x2: x(i), y1: y(Math.min(1, v.mean + v.std)), y2: y(Math.max(0, v.mean - v.std)), stroke: c, "stroke-width": 1.5, opacity: 0.5 }, svg);
+      const dot = el("circle", { cx: x(i), cy: y(v.mean), r: 4.5, fill: c, stroke: css("--surface"), "stroke-width": 2 }, svg);
+      const hit = el("circle", { cx: x(i), cy: y(v.mean), r: 12, fill: "transparent" }, svg);
+      hit.addEventListener("pointerenter", () => showTip(chart, svg, x(i), y(v.mean), `<b>${s.name}</b> · ${xlabels[i]}<br>${(v.mean * 100).toFixed(1)}% ± ${(v.std * 100).toFixed(1)} (${v.n} seeds)`));
+      hit.addEventListener("pointerleave", () => hideTip(chart));
+    });
+  }
+  table($(tblTarget), head, xs.map((_, i) => [xlabels[i], ...series.map(s => `${(s.vals[i].mean * 100).toFixed(1)}%`)]));
+}
+function drawAudit() {
+  const labels = ["Visible tests only", "Audit 5%", "Audit 10%", "Audit 25%", "Audit every episode"];
+  const rs = labels.map(l => get(l));
+  sweep("#chart-audit", "#tbl-audit", rs, ["0%", "5%", "10%", "25%", "100%"], [
+    { name: "False success", color: "--o-deleted", vals: rs.map(r => r.final.false_success) },
+    { name: "Actually correct", color: "--s-true", vals: rs.map(r => r.final.true_correct) },
+  ], "share of episodes audited", ["Audit rate", "False success", "Correct"]);
+}
+function drawHorizon() {
+  const hs = [1, 2, 4, 6, 8];
+  sweep("#chart-horizon", "#tbl-horizon", hs, hs.map(String), [
+    { name: "Visible checks only", color: "--r-visible", vals: hs.map(h => get("Visible tests only", h).final.false_success) },
+    { name: "Audit 10%", color: "--r-audit", vals: hs.map(h => get("Audit 10%", h).final.false_success) },
+  ], "broken branches per episode", ["Branches", "Visible only", "Audit 10%"]);
+}
+
+/* ---------- data-driven findings ---------- */
+function findings() {
+  const v = get("Visible tests only").final_mix.uncovered, d = get("Deletion penalty").final_mix.uncovered;
+  $("#f2-big").textContent = `${pct(d.deleted.mean)} / ${pct(d.stubbed.mean)}`;
+  $("#f2-text").textContent = `Deleted / stubbed untested branches after training with a deletion penalty, against ${pct(v.deleted.mean)} / ${pct(v.stubbed.mean)} with the visible checks alone. ` +
+    (d.stubbed.mean > v.stubbed.mean + 0.05 ? "Penalizing the hack you found moved the policy to the next one." : "I expected the policy to switch to stubs. It didn't: a stub sometimes fails the build, so an honest attempt was the better bet. A targeted penalty is enough only when the next hack is risky.");
+  const hs = [1, 2, 4, 6, 8], fs = hs.map(h => get("Visible tests only", h).final.false_success.mean);
+  const peak = hs[fs.indexOf(Math.max(...fs))];
+  $("#f4-big").textContent = `${pct(fs[0])} → ${pct(Math.max(...fs))}`;
+  $("#f4-text").textContent = `False success at 1 broken branch against its peak at ${peak}. With one branch an honest fix usually passes and RL leaves it alone; as the horizon grows, honest runs fail more often and the hack wins. By 8 branches almost nothing passes and there is no signal left to hack.`;
+}
+
+/* ---------- roadmap ---------- */
+const TAGS = {
+  "Reward hacking": "ver-1", "Verifier design": "ver-2", "Audits": "ver-3",
+  "Credit assignment": "lh-1", "Agent memory": "lh-2", "Multi-agent": "lh-3",
+  "Benchmarks": "ev-1", "Customer outcomes": "ev-2",
+};
+const PHASES = [
+  { p: "Phase 0", t: "Done", from: 0, to: 0, name: "Toy pilot", color: "--t-ver-1", tags: ["Reward hacking", "Audits"], status: true,
+    q: "Does verifier-optimal hacking appear under GRPO, and what stops it?",
+    method: "Patch World, above. SFT from a flawed demonstrator, GRPO against five rewards, horizon sweep, three seeds.",
+    output: "Code, results file and this page.",
+    kill: "Already passed: the hack appeared and audits measurably reduced it." },
+  { p: "Phase 1", t: "Months 1–3", from: 1, to: 3, name: "Measure false success", color: "--t-ver-1", tags: ["Reward hacking", "Benchmarks"],
+    q: "How many of our agents' green runs are wrong, and what do the hacks look like?",
+    method: "Sample passing trajectories from current agent runs. Push verification past the suite after the fact: mutation testing, differential testing of old against new code on generated inputs, coverage of the edited lines, and expert review of a slice. Label each run and build a taxonomy (deleted path, stub, weakened test, input special-casing, plausible but wrong).",
+    output: "A false-success rate with confidence intervals by task type, and a held-out labeled set every later phase is scored on.",
+    kill: "If audited false success is under about 2% of passing runs, the boundary is not the bottleneck. Redirect effort to Phase 4." },
+  { p: "Phase 2", t: "Months 3–7", from: 3, to: 7, name: "Extend the verifier", color: "--t-ver-2", tags: ["Verifier design", "Reward hacking"],
+    q: "Which cheap checks catch the hacks Phase 1 found?",
+    method: "Candidate signals: coverage-gated credit (edits to code no test reaches earn nothing until a generated test reaches them), differential tests against the pre-change program, mutation scores, and diff-level detectors. Score each on the Phase 1 set for precision, recall and compute per episode.",
+    output: "A ranked menu of verifier signals with measured cost, and the ones that go into the reward.",
+    kill: "Drop any signal that misses most of a hack class or costs more than the episode it checks." },
+  { p: "Phase 3", t: "Months 5–10", from: 5, to: 10, name: "Budgeted audits in RL", color: "--t-ver-3", tags: ["Audits", "Reward hacking"],
+    q: "How much expensive verification does training need, and where should it go?",
+    method: "Repeat the pilot's audit sweep on an open-weight model with the Phase 2 checks as the audit. Then replace random audits with targeted ones: audit the episodes whose diffs touch uncovered code, and compare at equal compute.",
+    output: "The audit-rate curve for our models and a post-training recipe that holds audited false success under a target.",
+    kill: "If targeted audits don't beat random ones at equal compute, ship the random-audit recipe and stop." },
+  { p: "Phase 4", t: "Months 8–15", from: 8, to: 15, name: "Long horizons", color: "--t-lh-2", tags: ["Credit assignment", "Agent memory", "Multi-agent"],
+    q: "How do we keep a 40-step, multi-day run honest when reward arrives at the end?",
+    method: "Verifiable checkpoints inside the run (build and targeted tests after each step) as intermediate reward. A ledger in the agent's memory of which claims it has verified and which it assumed, carried across days. Measure how per-step errors compound across steps and across agent handoffs in multi-agent plans.",
+    output: "A step-level reward recipe and a memory format, each with measured effect on end-of-run false success.",
+    kill: "If intermediate checks don't beat end-of-run reward at equal compute on 40-step tasks, keep the simpler reward." },
+  { p: "Phase 5", t: "Months 12–18", from: 12, to: 18, name: "Predictive evals", color: "--t-ev-1", tags: ["Benchmarks", "Customer outcomes"],
+    q: "Which offline numbers predict what customers see?",
+    method: "Join offline eval results with what happened after delivery: reverted changes, bug reports, review rejections. Fit which offline signals predict those outcomes and track audited false success as a release metric.",
+    output: "An eval suite with a measured correlation to customer-observed correctness.",
+    kill: "If no offline signal predicts customer outcomes better than pass rate does, report that and redesign the audit set." },
+];
+function roadmap() {
+  const tl = $("#tl");
+  tl.innerHTML = `<span></span>` + Array.from({ length: 18 }, (_, i) => `<span class="m">${i + 1}</span>`).join("");
+  PHASES.slice(1).forEach((ph, i) => {
+    const row = i + 2;
+    tl.insertAdjacentHTML("beforeend", `<span class="name" style="grid-row:${row};grid-column:1">${ph.p} · ${ph.name}</span><span class="bar" style="grid-row:${row};grid-column:${ph.from + 1} / ${ph.to + 2};background:var(${ph.color})"></span>`);
+  });
+  $("#phases").innerHTML = PHASES.map(ph => `
+    <article class="phase">
+      <div class="when"><span class="p">${ph.p}</span><span class="t">${ph.t}</span>${ph.status ? '<span class="status">✓ Complete</span>' : ""}</div>
+      <div class="body">
+        <h3>${ph.name}</h3>
+        <p class="q">${ph.q}</p>
+        <div class="tags">${ph.tags.map(t => `<span class="tag ${TAGS[t]}">${t}</span>`).join("")}</div>
+        <dl><dt>Method</dt><dd>${ph.method}</dd><dt>Output</dt><dd>${ph.output}</dd><dt>Kill if</dt><dd class="kill">${ph.kill}</dd></dl>
+      </div>
+    </article>`).join("");
+}
+
+function drawAll() { drawCurves(); drawMix(); drawAudit(); drawHorizon(); }
+findings(); roadmap(); drawAll();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawAll);
+new MutationObserver(drawAll).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+</script>
+
+</body>
+</html>
