@@ -1,0 +1,68 @@
+{
+ "id": "E03",
+ "seeds": 3,
+ "verdict": "supported",
+ "result": "Median onset step by group size [2, 4, 8, 16, 32]: [650.0, 350.0, 350.0, 300.0, 250.0] (1050 = never within 1,000 steps). Larger groups also mean more samples per step.",
+ "metrics": {
+  "group": [
+   2,
+   4,
+   8,
+   16,
+   32
+  ],
+  "onset": [
+   [
+    650,
+    900,
+    550
+   ],
+   [
+    350,
+    550,
+    350
+   ],
+   [
+    350,
+    350,
+    250
+   ],
+   [
+    300,
+    300,
+    200
+   ],
+   [
+    250,
+    250,
+    150
+   ]
+  ]
+ },
+ "chart": {
+  "kind": "bar",
+  "x_label": "GRPO group size",
+  "y_label": "onset step (median)",
+  "x": [
+   "2",
+   "4",
+   "8",
+   "16",
+   "32"
+  ],
+  "series": [
+   {
+    "name": "Onset step",
+    "y": [
+     650.0,
+     350.0,
+     350.0,
+     300.0,
+     250.0
+    ]
+   }
+  ],
+  "y_max": null
+ },
+ "runtime_s": 1186.5
+}

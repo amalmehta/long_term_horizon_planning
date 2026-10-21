@@ -1,0 +1,49 @@
+{
+ "id": "E50",
+ "seeds": 3,
+ "verdict": "mixed",
+ "result": "For a policy trained on visible checks where tests cover the most-used branches, a customer request fails 0.136 of the time, against 0.211 if every branch mattered equally (0.65\u00d7).",
+ "metrics": {
+  "customer_failure": [
+   0.1362288801571709,
+   0.0010995750862766171
+  ],
+  "uniform_failure": [
+   0.21095833333333333,
+   0.0015726982004280494
+  ],
+  "ratio": 0.6457620232613277,
+  "untested_wrong": [
+   0.9923164950138957,
+   0.009026193077309574
+  ],
+  "tested_wrong": [
+   0.2591364949855515,
+   0.0023026036349046617
+  ]
+ },
+ "chart": {
+  "kind": "bar",
+  "x_label": "failure rate",
+  "y_label": "share of requests",
+  "x": [
+   "what customers see",
+   "all branches equal"
+  ],
+  "series": [
+   {
+    "name": "Failure rate",
+    "y": [
+     0.1362288801571709,
+     0.21095833333333333
+    ],
+    "err": [
+     0.0010995750862766171,
+     0.0015726982004280494
+    ]
+   }
+  ],
+  "y_max": null
+ },
+ "runtime_s": 336.7
+}

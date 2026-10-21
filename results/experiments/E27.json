@@ -1,0 +1,47 @@
+{
+ "id": "E27",
+ "seeds": 3,
+ "verdict": "refuted",
+ "result": "False success: visible checks 0.57 \u00b1 0.01, reward model alone 0.00 \u00b1 0.00, both required 0.04 \u00b1 0.00. The reward-model-only policy scores near zero because it collapsed into fixes that don't build (true correctness 0.00); requiring both kept true correctness at 0.31.",
+ "metrics": {
+  "visible": [
+   0.5703333333333335,
+   0.0067123435218674025
+  ],
+  "rm": [
+   0.0023333333333333335,
+   0.0013123346456686352
+  ],
+  "combined": [
+   0.03883333333333333,
+   0.0024608038433722355
+  ]
+ },
+ "chart": {
+  "kind": "bar",
+  "x_label": "reward",
+  "y_label": "false success",
+  "x": [
+   "visible checks",
+   "reward model",
+   "both"
+  ],
+  "series": [
+   {
+    "name": "False success",
+    "y": [
+     0.5703333333333335,
+     0.0023333333333333335,
+     0.03883333333333333
+    ],
+    "err": [
+     0.0067123435218674025,
+     0.0013123346456686352,
+     0.0024608038433722355
+    ]
+   }
+  ],
+  "y_max": 1
+ },
+ "runtime_s": 3418.8
+}

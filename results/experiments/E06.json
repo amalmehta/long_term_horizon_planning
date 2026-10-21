@@ -1,0 +1,42 @@
+{
+ "id": "E06",
+ "seeds": 3,
+ "verdict": "supported",
+ "result": "With coverage tied to position, false success was 0.57 \u00b1 0.00 with the flag shown and 0.32 \u00b1 0.01 with it hidden (56% of the flag-shown level).",
+ "metrics": {
+  "shown": [
+   0.568,
+   0.57,
+   0.5715
+  ],
+  "hidden": [
+   0.3255,
+   0.3025,
+   0.329
+  ]
+ },
+ "chart": {
+  "kind": "bar",
+  "x_label": "coverage flag",
+  "y_label": "false success",
+  "x": [
+   "shown",
+   "hidden"
+  ],
+  "series": [
+   {
+    "name": "False success",
+    "y": [
+     0.5698333333333333,
+     0.319
+    ],
+    "err": [
+     0.0014337208778404606,
+     0.01175443178833698
+    ]
+   }
+  ],
+  "y_max": 1
+ },
+ "runtime_s": 2146.6
+}

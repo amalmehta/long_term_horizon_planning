@@ -1,0 +1,45 @@
+{
+ "id": "E20",
+ "seeds": 3,
+ "verdict": "refuted",
+ "result": "At 10% audits, false success is 0.29 \u00b1 0.06 with a flag-for-a-human action and 0.24 \u00b1 0.06 without (-21% lower). Untested branches flagged: 0.00 \u00b1 0.00.",
+ "metrics": {
+  "fs_with": [
+   0.29333333333333333,
+   0.064251242962469
+  ],
+  "fs_without": [
+   0.24316666666666667,
+   0.05593200236795469
+  ],
+  "flagged_untested": [
+   0.0,
+   0.0
+  ]
+ },
+ "chart": {
+  "kind": "bar",
+  "x_label": "action set",
+  "y_label": "false success",
+  "x": [
+   "no flag action",
+   "with flag action"
+  ],
+  "series": [
+   {
+    "name": "False success",
+    "y": [
+     0.24316666666666667,
+     0.29333333333333333
+    ],
+    "err": [
+     0.05593200236795469,
+     0.064251242962469
+    ]
+   }
+  ],
+  "y_max": 1
+ },
+ "notes": "With the flag action enabled the demonstrator flags half of what would otherwise be random-value slips (5% of branches), so the action has support after fine-tuning.",
+ "runtime_s": 1260.9
+}

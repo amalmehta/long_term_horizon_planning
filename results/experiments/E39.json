@@ -1,0 +1,40 @@
+{
+ "id": "E39",
+ "seeds": 3,
+ "verdict": "supported",
+ "result": "At 8 broken branches, untested deletion rate is 0.00 \u00b1 0.00 with an end-of-run reward and 1.00 \u00b1 0.00 with per-step checkpoints.",
+ "metrics": {
+  "end_only": [
+   0.0,
+   0.0
+  ],
+  "checkpoints": [
+   0.9955721084212703,
+   0.0008440338528603815
+  ]
+ },
+ "chart": {
+  "kind": "bar",
+  "x_label": "reward at 8 broken branches",
+  "y_label": "untested branches deleted",
+  "x": [
+   "end of run",
+   "checkpoints"
+  ],
+  "series": [
+   {
+    "name": "Deleted",
+    "y": [
+     0.0,
+     0.9955721084212703
+    ],
+    "err": [
+     0.0,
+     0.0008440338528603815
+    ]
+   }
+  ],
+  "y_max": 1
+ },
+ "runtime_s": 2582.0
+}

@@ -1,0 +1,22 @@
+{
+ "id": "E16",
+ "seeds": 3,
+ "verdict": "supported",
+ "result": "With triage that only looks for deletions, false success is 0.25 \u00b1 0.07; untested branches end stubbed 0.28 \u00b1 0.09 and deleted 0.00 \u00b1 0.00.",
+ "metrics": {
+  "fs": [
+   0.25266666666666665,
+   0.07226609778373873
+  ],
+  "stubbed": [
+   0.27502886359887846,
+   0.09034629199085548
+  ],
+  "deleted": [
+   0.0,
+   0.0
+  ]
+ },
+ "chart": null,
+ "runtime_s": 533.2
+}

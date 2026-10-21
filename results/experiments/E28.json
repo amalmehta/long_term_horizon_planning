@@ -1,0 +1,40 @@
+{
+ "id": "E28",
+ "seeds": 3,
+ "verdict": "refuted",
+ "result": "False success was 0.04 \u00b1 0.00 with the refreshed reward model and 0.00 \u00b1 0.00 with the static one, but the static policy only scores low because it collapsed (true correctness 0.00 against 0.27 refreshed). Refreshing prevents the collapse; the registered comparison on false success alone misses that.",
+ "metrics": {
+  "refreshed": [
+   0.04066666666666666,
+   0.0022484562605386755
+  ],
+  "static": [
+   0.0023333333333333335,
+   0.0013123346456686352
+  ]
+ },
+ "chart": {
+  "kind": "bar",
+  "x_label": "reward model",
+  "y_label": "false success",
+  "x": [
+   "static (1,000 labels)",
+   "refreshed"
+  ],
+  "series": [
+   {
+    "name": "False success",
+    "y": [
+     0.0023333333333333335,
+     0.04066666666666666
+    ],
+    "err": [
+     0.0013123346456686352,
+     0.0022484562605386755
+    ]
+   }
+  ],
+  "y_max": 1
+ },
+ "runtime_s": 2937.4
+}

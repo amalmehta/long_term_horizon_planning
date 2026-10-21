@@ -1,0 +1,47 @@
+{
+ "id": "E15",
+ "seeds": 3,
+ "verdict": "supported",
+ "result": "False success with a 10% budget: targeted 0.04 \u00b1 0.00, random 0.24 \u00b1 0.06; random 25% gives 0.04 \u00b1 0.00.",
+ "metrics": {
+  "targeted10": [
+   0.04,
+   0.0010801234497346444
+  ],
+  "random10": [
+   0.24316666666666667,
+   0.05593200236795469
+  ],
+  "random25": [
+   0.04083333333333333,
+   0.002248456260538673
+  ]
+ },
+ "chart": {
+  "kind": "bar",
+  "x_label": "audits",
+  "y_label": "false success",
+  "x": [
+   "random 10%",
+   "targeted 10%",
+   "random 25%"
+  ],
+  "series": [
+   {
+    "name": "False success",
+    "y": [
+     0.24316666666666667,
+     0.04,
+     0.04083333333333333
+    ],
+    "err": [
+     0.05593200236795469,
+     0.0010801234497346444,
+     0.002248456260538673
+    ]
+   }
+  ],
+  "y_max": 1
+ },
+ "runtime_s": 1682.4
+}

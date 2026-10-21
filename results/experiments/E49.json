@@ -1,0 +1,44 @@
+{
+ "id": "E49",
+ "seeds": 6,
+ "verdict": "mixed",
+ "result": "Alarm minus onset (steps) across 6 runs: [-8, -32, -12, 96, 101, 17]. No alarm before step 100.",
+ "metrics": {
+  "runs": [
+   {
+    "onset": 350,
+    "alarm": 342,
+    "baseline_rate": 0.07956989247311828
+   },
+   {
+    "onset": 350,
+    "alarm": 318,
+    "baseline_rate": 0.07736943907156674
+   },
+   {
+    "onset": 250,
+    "alarm": 238,
+    "baseline_rate": 0.06878306878306878
+   },
+   {
+    "onset": 400,
+    "alarm": 496,
+    "baseline_rate": 0.09227871939736347
+   },
+   {
+    "onset": 400,
+    "alarm": 501,
+    "baseline_rate": 0.08348457350272233
+   },
+   {
+    "onset": 300,
+    "alarm": 317,
+    "baseline_rate": 0.09856262833675565
+   }
+  ],
+  "median_delay": 4.5
+ },
+ "notes": "CUSUM settings fixed before running: baseline rate p0 from steps 0\u201349, reference k = max(2\u00b7p0, 0.05) per audit, threshold h = 4 caught episodes.",
+ "chart": null,
+ "runtime_s": 327.0
+}

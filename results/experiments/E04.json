@@ -1,0 +1,57 @@
+{
+ "id": "E04",
+ "seeds": 3,
+ "verdict": "supported",
+ "result": "Onset steps by learning rate [0.0003, 0.001, 0.003]: [[1000, 1100, 750], [350, 350, 250], [150, 150, 100]]. Learning rate \u00d7 onset ranges 0.30\u20130.45, a factor of 1.5.",
+ "metrics": {
+  "lr": [
+   0.0003,
+   0.001,
+   0.003
+  ],
+  "onset": [
+   [
+    1000,
+    1100,
+    750
+   ],
+   [
+    350,
+    350,
+    250
+   ],
+   [
+    150,
+    150,
+    100
+   ]
+  ],
+  "lr_x_onset": [
+   0.3,
+   0.35000000000000003,
+   0.45
+  ]
+ },
+ "chart": {
+  "kind": "bar",
+  "x_label": "learning rate",
+  "y_label": "onset step (median)",
+  "x": [
+   "0.0003",
+   "0.001",
+   "0.003"
+  ],
+  "series": [
+   {
+    "name": "Onset step",
+    "y": [
+     1000.0,
+     350.0,
+     150.0
+    ]
+   }
+  ],
+  "y_max": null
+ },
+ "runtime_s": 3408.9
+}

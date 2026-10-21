@@ -1,0 +1,9 @@
+{
+ "id": "E40",
+ "verdict": "pending",
+ "result": "Deferred. The 40-step runs were too slow on a heavily shared machine, so they will run later on a quieter one. Run with: python -m experiments.suite --only E40",
+ "metrics": {},
+ "chart": null,
+ "seeds": 0,
+ "runtime_s": 0
+}

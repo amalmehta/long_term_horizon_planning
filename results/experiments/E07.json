@@ -1,0 +1,42 @@
+{
+ "id": "E07",
+ "seeds": 3,
+ "verdict": "supported",
+ "result": "False success 0.17 \u00b1 0.01 with a 20%-wrong coverage flag against 0.57 \u00b1 0.01 with an accurate one (71% lower).",
+ "metrics": {
+  "accurate": [
+   0.561,
+   0.5765,
+   0.5735
+  ],
+  "noisy": [
+   0.175,
+   0.1645,
+   0.1625
+  ]
+ },
+ "chart": {
+  "kind": "bar",
+  "x_label": "coverage flag",
+  "y_label": "false success",
+  "x": [
+   "accurate",
+   "20% wrong"
+  ],
+  "series": [
+   {
+    "name": "False success",
+    "y": [
+     0.5703333333333335,
+     0.16733333333333333
+    ],
+    "err": [
+     0.0067123435218674025,
+     0.005482294734466168
+    ]
+   }
+  ],
+  "y_max": 1
+ },
+ "runtime_s": 1796.7
+}

@@ -1,0 +1,35 @@
+{
+ "id": "E48",
+ "seeds": 3,
+ "verdict": "supported",
+ "result": "Across 882 checkpoints, Spearman correlation with correctness on less-tested deployment code: visible pass -0.45, a 100-program audit estimate 0.86, untested deletion rate -0.87.",
+ "metrics": {
+  "n_checkpoints": 882,
+  "spearman_visible": -0.4529995322185368,
+  "spearman_audit100": 0.858080405121326,
+  "spearman_deleted": -0.8718899491311597
+ },
+ "chart": {
+  "kind": "bar",
+  "x_label": "offline metric",
+  "y_label": "Spearman with deployment correctness",
+  "x": [
+   "visible pass",
+   "100-program audit",
+   "untested deletions"
+  ],
+  "series": [
+   {
+    "name": "Spearman \u03c1",
+    "y": [
+     -0.4529995322185368,
+     0.858080405121326,
+     -0.8718899491311597
+    ]
+   }
+  ],
+  "y_max": null
+ },
+ "notes": "Checkpoints are the evaluation points (every 50 steps) of the E02, E05 and E23 runs. Deployment = coverage 0.2, 6 broken branches. The audit estimate is a binomial sample of 100 programs from each checkpoint's true correctness.",
+ "runtime_s": 10088.4
+}
