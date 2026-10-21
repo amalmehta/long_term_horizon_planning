@@ -2,20 +2,22 @@
 
 ## Setup
 
-Needs Python 3.11+ and NumPy. With [uv](https://docs.astral.sh/uv/):
+Needs Python 3.11+. The pilot needs only NumPy; the experiment log's transformer experiments also need PyTorch. With [uv](https://docs.astral.sh/uv/):
 
 ```bash
 uv venv --python 3.11 .venv
-uv pip install --python .venv/bin/python numpy pytest
+uv pip install --python .venv/bin/python "numpy<2" "torch==2.2.2" pytest
 ```
 
-Or with plain pip: `python3 -m venv .venv && .venv/bin/pip install numpy pytest`.
+PyTorch 2.2.2 is the last release with Intel-Mac wheels and it needs NumPy 1.x; on Apple Silicon or Linux any recent PyTorch and NumPy work. The pilot alone runs with just `numpy pytest`.
 
 ## Run the tests
 
 ```bash
 .venv/bin/python -m pytest -q tests
 ```
+
+`tests/test_engine.py` includes a check that the experiment engine reproduces the pilot exactly.
 
 ## Run the pilot
 
@@ -40,6 +42,18 @@ A one-seed smoke test of the whole pipeline (writes `results/summary_quick.json`
 ```
 
 Finished runs are cached in `results/runs/`; delete a file to rerun it.
+
+## Run the experiment log
+
+The 50 pre-registered experiments are defined in `experiments/registry.py`. Three runners produce their results:
+
+```bash
+.venv/bin/python -m experiments.suite --workers 8     # E01–E30, E39–E44, E48–E50 (294 cached jobs)
+.venv/bin/python -m experiments.run_seq               # E31–E38, transformer and probes
+.venv/bin/python -m experiments.multiagent            # E45–E47
+```
+
+Run a subset with `python -m experiments.suite --only E05 E14`. Every job is cached under `results/experiments/runs*/` by a hash of its settings, so reruns only compute what changed. Each experiment writes `results/experiments/EXX.json`; the site shows experiments without one as pending.
 
 ## Build and view the website
 
