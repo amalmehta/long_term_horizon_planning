@@ -15,12 +15,13 @@ def log_softmax(z: np.ndarray) -> np.ndarray:
 
 
 class MLP:
-    def __init__(self, rng: np.random.Generator, hidden: int = 128):
+    def __init__(self, rng: np.random.Generator, hidden: int = 128,
+                 in_dim: int = OBS_DIM, out_dim: int = N_ACTIONS):
         self.params = {
-            "W1": rng.normal(0, np.sqrt(2 / OBS_DIM), (OBS_DIM, hidden)),
+            "W1": rng.normal(0, np.sqrt(2 / in_dim), (in_dim, hidden)),
             "b1": np.zeros(hidden),
-            "W2": rng.normal(0, 0.01, (hidden, N_ACTIONS)),
-            "b2": np.zeros(N_ACTIONS),
+            "W2": rng.normal(0, 0.01, (hidden, out_dim)),
+            "b2": np.zeros(out_dim),
         }
         self.m = {k: np.zeros_like(v) for k, v in self.params.items()}
         self.v = {k: np.zeros_like(v) for k, v in self.params.items()}
