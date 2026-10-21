@@ -25,3 +25,8 @@ results/sft_cache/
 results/runs_quick/
 results/summary_quick.json
 inputs/*.pdf
+
+# experiment log caches (regenerable; results/experiments/E*.json are kept)
+results/experiments/runs*/
+results/experiments/sft_cache/
+results/experiments/*.log
