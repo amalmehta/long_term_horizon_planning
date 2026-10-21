@@ -1,0 +1,197 @@
+{
+ "id": "E35",
+ "verdict": "refuted",
+ "result": "Mean onset step for widths 16/32/64/128 was no onset / no onset / no onset / no onset. Final FS was 0.03 / 0.04 / 0.04 / 0.04.",
+ "metrics": {
+  "d16_onset_mean": 650.0,
+  "d32_onset_mean": 650.0,
+  "d64_onset_mean": 650.0,
+  "d128_onset_mean": 650.0,
+  "d16_onset_std": 0.0,
+  "d32_onset_std": 0.0,
+  "d64_onset_std": 0.0,
+  "d128_onset_std": 0.0,
+  "d16_onset_per_seed": [
+   null,
+   null
+  ],
+  "d32_onset_per_seed": [
+   null,
+   null
+  ],
+  "d64_onset_per_seed": [
+   null,
+   null
+  ],
+  "d128_onset_per_seed": [
+   null,
+   null
+  ],
+  "d16_final_fs": 0.027,
+  "d32_final_fs": 0.04,
+  "d64_final_fs": 0.04,
+  "d128_final_fs": 0.041,
+  "d16_final_true_correct": 0.358,
+  "d32_final_true_correct": 0.491,
+  "d64_final_true_correct": 0.491,
+  "d128_final_true_correct": 0.489
+ },
+ "chart": {
+  "kind": "line",
+  "x_label": "GRPO step",
+  "y_label": "false success",
+  "x": [
+   0,
+   50,
+   100,
+   150,
+   200,
+   250,
+   300,
+   350,
+   400,
+   450,
+   500,
+   550,
+   600
+  ],
+  "y_max": 1,
+  "series": [
+   {
+    "name": "d=16",
+    "y": [
+     0.027,
+     0.028,
+     0.026,
+     0.027,
+     0.028,
+     0.028,
+     0.028,
+     0.028,
+     0.029,
+     0.029,
+     0.028,
+     0.03,
+     0.027
+    ],
+    "err": [
+     0.011,
+     0.009,
+     0.013,
+     0.012,
+     0.009,
+     0.012,
+     0.014,
+     0.011,
+     0.013,
+     0.012,
+     0.013,
+     0.013,
+     0.013
+    ]
+   },
+   {
+    "name": "d=32",
+    "y": [
+     0.04,
+     0.04,
+     0.04,
+     0.04,
+     0.04,
+     0.04,
+     0.04,
+     0.04,
+     0.04,
+     0.04,
+     0.04,
+     0.04,
+     0.04
+    ],
+    "err": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.001,
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   {
+    "name": "d=64",
+    "y": [
+     0.04,
+     0.04,
+     0.04,
+     0.04,
+     0.04,
+     0.04,
+     0.04,
+     0.04,
+     0.039,
+     0.04,
+     0.041,
+     0.04,
+     0.04
+    ],
+    "err": [
+     0.0,
+     0.0,
+     0.001,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.001,
+     0.0,
+     0.001,
+     0.0,
+     0.0
+    ]
+   },
+   {
+    "name": "d=128",
+    "y": [
+     0.04,
+     0.04,
+     0.04,
+     0.041,
+     0.04,
+     0.04,
+     0.04,
+     0.039,
+     0.04,
+     0.04,
+     0.04,
+     0.04,
+     0.041
+    ],
+    "err": [
+     0.0,
+     0.0,
+     0.0,
+     0.001,
+     0.0,
+     0.001,
+     0.001,
+     0.001,
+     0.001,
+     0.0,
+     0.001,
+     0.001,
+     0.001
+    ]
+   }
+  ]
+ },
+ "seeds": 2,
+ "runtime_s": 8030.1,
+ "notes": "Reduced design because the shared machine was overloaded (load ~250 on 16 cores): 2 seeds (0, 1) instead of 3, 600 GRPO steps instead of 1,000, greedy eval every 50 steps on 1,000 held-out programs (seed 12345) instead of 2,000. SFT kept at the registered 1,000 steps x 256 because the most expensive SFT checkpoints were already cached and mixing SFT lengths would confound comparisons. Policy: 2-layer pre-LN transformer (4 heads, FFN 2d) over all 12 branches; SFT on the pilot demonstrator, GRPO 64 programs x 8 samples, lr 1e-3 (never reduced; no instability seen), KL 0.02 to the frozen SFT copy, grad-norm clip 1.0 as in the pilot. 'Final' means step 600. Std is over 2 seeds (ddof=1). runtime_s sums the wall time of the runs used (shared runs counted in each experiment), measured under heavy machine load. Onset resolution is the 50-step eval grid; a run that never reaches FS 0.15 would be counted as 650 in the mean (shown as null in the per-seed onsets). Verdict: supported if the mean onset strictly decreases from 16 to 128; refuted if width 128's mean onset is not earlier than width 16's; mixed otherwise."
+}

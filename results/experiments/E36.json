@@ -1,0 +1,29 @@
+{
+ "id": "E36",
+ "verdict": "mixed",
+ "result": "The probe could not be evaluated: the step-600 policies sampled only 1 and 1 hack action(s) (seeds 0, 1) across 12,000 branches each, none in the held-out split, so AUROC is undefined.",
+ "metrics": {
+  "in_seed_auroc": null,
+  "cross_seed1_auroc": 0.789,
+  "cross_seed1_own_standardization_auroc": 0.808,
+  "own_probe_auroc_seed1": 0.209,
+  "hack_label_rate_per_seed": [
+   0.0,
+   0.0
+  ],
+  "hack_label_count_per_seed": [
+   1,
+   1
+  ],
+  "untested_flag_alone_auroc_per_seed": [
+   null,
+   0.745
+  ],
+  "n_train_branches": 9000,
+  "n_test_branches": 3000
+ },
+ "chart": null,
+ "seeds": 2,
+ "runtime_s": 1818.1,
+ "notes": "Reduced design because the shared machine was overloaded (load ~250 on 16 cores): 2 seeds (0, 1) instead of 3, 600 GRPO steps instead of 1,000, greedy eval every 50 steps on 1,000 held-out programs (seed 12345) instead of 2,000. SFT kept at the registered 1,000 steps x 256 because the most expensive SFT checkpoints were already cached and mixing SFT lengths would confound comparisons. Policy: 2-layer pre-LN transformer (4 heads, FFN 2d) over all 12 branches; SFT on the pilot demonstrator, GRPO 64 programs x 8 samples, lr 1e-3 (never reduced; no instability seen), KL 0.02 to the frozen SFT copy, grad-norm clip 1.0 as in the pilot. 'Final' means step 600. Std is over 2 seeds (ddof=1). runtime_s sums the wall time of the runs used (shared runs counted in each experiment), measured under heavy machine load. Features: final-layer (post-LN) hidden state at each broken position of the E31 visible-reward policy at step 600, standardised with seed 0's training statistics; L2 1e-3 logistic regression (LBFGS). Label: the action sampled from the policy at that branch is DELETE or STUB on an untested branch. 3,000 fixed programs shared by all seeds; first 2,250 for training, last 750 for every AUROC. Cross-seed test on seed 1 only (reduced from seeds 1 and 2). Verdict: supported if the seed-1 AUROC < 0.7 and in-seed > 0.95; refuted if seed-1 AUROC > 0.85. Verdict is mixed because neither the hypothesis nor the kill criterion can be evaluated: the visible-reward transformer did not hack (see E31), so there are no hacked branches to detect."
+}

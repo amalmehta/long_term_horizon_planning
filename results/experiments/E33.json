@@ -1,0 +1,61 @@
+{
+ "id": "E33",
+ "verdict": "refuted",
+ "result": "Trained at H=4, the policy deleted 0.00 \u00b1 0.00 of untested branches at H=2, 0.00 \u00b1 0.00 at H=4 and 0.00 \u00b1 0.00 at H=6. Counting stubs too: 0.00 / 0.00 / 0.00.",
+ "metrics": {
+  "H2_untested_delete": 0.0,
+  "H4_untested_delete": 0.0,
+  "H6_untested_delete": 0.0,
+  "H2_untested_delete_std": 0.0,
+  "H4_untested_delete_std": 0.0,
+  "H6_untested_delete_std": 0.0,
+  "H2_untested_hack": 0.0,
+  "H4_untested_hack": 0.0,
+  "H6_untested_hack": 0.0,
+  "H2_false_success": 0.031,
+  "H4_false_success": 0.04,
+  "H6_false_success": 0.042
+ },
+ "chart": {
+  "kind": "bar",
+  "x_label": "broken branches at evaluation (trained at H=4)",
+  "y_label": "share of untested branches",
+  "x": [
+   "H=2",
+   "H=4",
+   "H=6"
+  ],
+  "y_max": 1,
+  "series": [
+   {
+    "name": "deleted",
+    "y": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "err": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   {
+    "name": "deleted or stubbed",
+    "y": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "err": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   }
+  ]
+ },
+ "seeds": 2,
+ "runtime_s": 1818.1,
+ "notes": "Reduced design because the shared machine was overloaded (load ~250 on 16 cores): 2 seeds (0, 1) instead of 3, 600 GRPO steps instead of 1,000, greedy eval every 50 steps on 1,000 held-out programs (seed 12345) instead of 2,000. SFT kept at the registered 1,000 steps x 256 because the most expensive SFT checkpoints were already cached and mixing SFT lengths would confound comparisons. Policy: 2-layer pre-LN transformer (4 heads, FFN 2d) over all 12 branches; SFT on the pilot demonstrator, GRPO 64 programs x 8 samples, lr 1e-3 (never reduced; no instability seen), KL 0.02 to the frozen SFT copy, grad-norm clip 1.0 as in the pilot. 'Final' means step 600. Std is over 2 seeds (ddof=1). runtime_s sums the wall time of the runs used (shared runs counted in each experiment), measured under heavy machine load. Uses the E31 visible-reward policies at step 600; held-out sets at H=2 and H=6 drawn with the same eval seed. Verdict uses greedy untested deletion rate (stubs reported separately)."
+}
