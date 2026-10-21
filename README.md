@@ -24,7 +24,7 @@ An 18-month research program for post-training long-horizon code agents when the
 
 ## Links
 
-- **The website:** [site/index.html](site/index.html) (open in a browser)
+- **The website:** [amalmehta.github.io/long_term_horizon_planning](https://amalmehta.github.io/long_term_horizon_planning/) (source: [site/index.html](site/index.html))
 - [Setup, run and use](docs/INSTRUCTIONS.md)
 - [The 50 pre-registered experiments](experiments/registry.py)
 - [System design](docs/SYSTEM-DESIGN.md)
