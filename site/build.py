@@ -13,6 +13,10 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+from experiments.registry import EXPERIMENTS, THEMES  # noqa: E402
+
+XDIR = ROOT / "results" / "experiments"
 SUMMARY = ROOT / "results" / "summary.json"
 TEMPLATE = ROOT / "site" / "template.html"
 OUT = ROOT / "site" / "index.html"
@@ -51,7 +55,15 @@ def main():
         "h1_fs": pct(get("Visible tests only", 1)["final"]["false_success"]["mean"]),
         "h8_vis": pct(get("Visible tests only", 8)["final"]["visible_pass"]["mean"]),
     }
+    xlog = []
+    for e in EXPERIMENTS:
+        path = XDIR / f"{e['id']}.json"
+        name, family = THEMES[e["theme"]]
+        xlog.append({**e, "theme_name": name, "family": family,
+                     "result": json.loads(path.read_text()) if path.exists() else None})
+    keys["n_done"] = str(sum(x["result"] is not None for x in xlog))
     html = TEMPLATE.read_text()
+    html = html.replace("/*__XLOG__*/null", json.dumps(xlog, separators=(",", ":")))
     html = html.replace("/*__DATA__*/null", json.dumps(runs, separators=(",", ":")))
     missing = set(re.findall(r"{{(\w+)}}", html)) - keys.keys()
     if missing:

@@ -39,6 +39,14 @@
   --t-lh-3: #7fcd92; --t-lh-3-ink: #0c3f1b;
   --t-ev-1: #fbe9c6; --t-ev-1-ink: #7a4b00;
   --t-ev-2: #f5d38f; --t-ev-2-ink: #5e3a00;
+  --t-ver-4: #6f9be6; --t-ver-4-ink: #071f45;
+  --t-mod-1: #e7e2fb; --t-mod-1-ink: #3d2a8f;
+  --t-mod-2: #c7bdf3; --t-mod-2-ink: #2a1a75;
+  --v-sup: #1a7f4b; --v-sup-bg: #e3f4ea;
+  --v-ref: #b3261e; --v-ref-bg: #fbe7e5;
+  --v-mix: #a1660f; --v-mix-bg: #fbf0dc;
+  --v-pend: #7a8091; --v-pend-bg: #eceef2;
+  --c-1: #2a78d6; --c-2: #eb6834; --c-3: #1baf7a; --c-4: #eda100;
 
   --code-bg: #f7f8fa;
   --del-bg: #fde8e6;
@@ -60,6 +68,12 @@
     --t-ver-1: #16294a; --t-ver-1-ink: #a9c6f5; --t-ver-2: #1d3766; --t-ver-2-ink: #c3d7f8; --t-ver-3: #284a85; --t-ver-3-ink: #dde8fb;
     --t-lh-1: #132e1b; --t-lh-1-ink: #9fdcae; --t-lh-2: #1a4426; --t-lh-2-ink: #bfe8c8; --t-lh-3: #245b33; --t-lh-3-ink: #dbf3e0;
     --t-ev-1: #3a2a08; --t-ev-1-ink: #f2cf86; --t-ev-2: #54400f; --t-ev-2-ink: #f8e2b0;
+    --t-ver-4: #3561a8; --t-ver-4-ink: #eef4fd; --t-mod-1: #251d4a; --t-mod-1-ink: #c9bff6; --t-mod-2: #352a6b; --t-mod-2-ink: #e2dcfa;
+    --v-sup: #3fb57a; --v-sup-bg: #12301f; --v-ref: #ef6b5f; --v-ref-bg: #3a1614; --v-mix: #e0a84a; --v-mix-bg: #3a2a08; --v-pend: #868c9b; --v-pend-bg: #1f232b;
+    --c-1: #3987e5; --c-2: #d95926; --c-3: #199e70; --c-4: #c98500;
+    --t-ver-4: #3561a8; --t-ver-4-ink: #eef4fd; --t-mod-1: #251d4a; --t-mod-1-ink: #c9bff6; --t-mod-2: #352a6b; --t-mod-2-ink: #e2dcfa;
+    --v-sup: #3fb57a; --v-sup-bg: #12301f; --v-ref: #ef6b5f; --v-ref-bg: #3a1614; --v-mix: #e0a84a; --v-mix-bg: #3a2a08; --v-pend: #868c9b; --v-pend-bg: #1f232b;
+    --c-1: #3987e5; --c-2: #d95926; --c-3: #199e70; --c-4: #c98500;
     --code-bg: #12161c; --del-bg: #3a1614; --del-ink: #f2a39c; --cov-hit: #199e70; --cov-miss: #2a2f3a;
     color-scheme: dark;
   }
@@ -234,6 +248,56 @@ details.table summary { cursor: pointer; font: 500 0.78rem var(--f-mono); color:
 ul.plain { margin: 0; padding-left: 1.1em; display: flex; flex-direction: column; gap: 8px; color: var(--ink-2); }
 pre.cmd { background: var(--code-bg); border: 1px solid var(--rule); border-radius: 8px; padding: 14px 16px; overflow-x: auto; font: 400 0.82rem/1.7 var(--f-mono); margin: 0; }
 footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--rule); font: 500 0.8rem var(--f-mono); color: var(--ink-3); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+/* experiment log */
+.tag.ver-4 { background: var(--t-ver-4); color: var(--t-ver-4-ink); }
+.tag.mod-1 { background: var(--t-mod-1); color: var(--t-mod-1-ink); }
+.tag.mod-2 { background: var(--t-mod-2); color: var(--t-mod-2-ink); }
+.tally { display: flex; flex-wrap: wrap; gap: 10px 28px; margin-top: 24px; }
+.tally .t { display: flex; flex-direction: column; gap: 2px; }
+.tally .t b { font: 700 2rem/1 var(--f-display); font-variant-numeric: tabular-nums; }
+.tally .t span { font: 500 0.75rem var(--f-mono); color: var(--ink-3); }
+.matrix { display: flex; flex-direction: column; gap: 6px; margin-top: 24px; }
+.mrow { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 12px; align-items: center; }
+.mrow .tag { justify-self: start; }
+.cells { display: flex; flex-wrap: wrap; gap: 4px; }
+.cell { width: 30px; height: 30px; border-radius: 5px; border: 0; font: 600 0.62rem var(--f-mono); cursor: pointer; display: grid; place-items: center; }
+.cell.supported { background: var(--v-sup-bg); color: var(--v-sup); box-shadow: inset 0 0 0 1.5px var(--v-sup); }
+.cell.refuted { background: var(--v-ref-bg); color: var(--v-ref); box-shadow: inset 0 0 0 1.5px var(--v-ref); }
+.cell.mixed { background: var(--v-mix-bg); color: var(--v-mix); box-shadow: inset 0 0 0 1.5px var(--v-mix); }
+.cell.pending { background: var(--v-pend-bg); color: var(--v-pend); }
+.filters { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin-top: 28px; }
+.filters .seg button { padding: 6px 10px; }
+.xgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); gap: 16px; margin-top: 18px; }
+.xcard { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; min-width: 0; scroll-margin-top: 16px; }
+.xcard:target, .xcard.flash { outline: 2px solid var(--accent); outline-offset: 2px; }
+.xhead { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.xhead .idt { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.xid { font: 600 0.72rem var(--f-mono); color: var(--ink-3); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.xcard h3 { font-size: 1.05rem; }
+.xq { font-size: 0.93rem; color: var(--ink-2); font-style: italic; }
+.pill { font: 600 0.72rem var(--f-mono); padding: 3px 9px; border-radius: 999px; white-space: nowrap; display: inline-flex; gap: 5px; align-items: center; color: var(--ink); }
+.pill i { font-style: normal; font-weight: 700; }
+.pill.supported { background: var(--v-sup-bg); } .pill.supported i { color: var(--v-sup); }
+.pill.refuted { background: var(--v-ref-bg); } .pill.refuted i { color: var(--v-ref); }
+.pill.mixed { background: var(--v-mix-bg); } .pill.mixed i { color: var(--v-mix); }
+.pill.pending { background: var(--v-pend-bg); } .pill.pending i { color: var(--v-pend); }
+.xpred { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 4px 12px; font-size: 0.88rem; margin: 0; }
+.xpred dt { font: 600 0.66rem/1.9 var(--f-mono); letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-3); }
+.xpred dd { margin: 0; color: var(--ink-2); }
+.xres { font-size: 0.95rem; color: var(--ink); border-left: 2px solid var(--rule); padding-left: 10px; }
+.xnote { font-size: 0.82rem; color: var(--ink-3); }
+.xmeta { font: 500 0.72rem var(--f-mono); color: var(--ink-3); }
+.xchart { position: relative; }
+.xchart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.xchart text { font-family: var(--f-mono); font-size: 10px; fill: var(--ink-3); }
+.xchart .grid { stroke: var(--rule); stroke-width: 1; }
+.xlegend { display: flex; flex-wrap: wrap; gap: 4px 12px; font: 500 0.72rem var(--f-mono); color: var(--ink-2); }
+.xlegend span { display: inline-flex; gap: 5px; align-items: center; }
+.xlegend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+details.design summary { cursor: pointer; font: 500 0.75rem var(--f-mono); color: var(--ink-3); }
+details.design p { font-size: 0.88rem; color: var(--ink-2); margin-top: 6px; }
+@media (max-width: 600px) { .mrow { grid-template-columns: 1fr; gap: 6px; } .xpred { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 
@@ -244,6 +308,7 @@ footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--rule);
       <a href="#boundary">The boundary</a>
       <a href="#pilot">Pilot</a>
       <a href="#roadmap">Roadmap</a>
+      <a href="#log">Experiment log</a>
       <a href="#how">How I'd run it</a>
       <a href="#reproduce">Reproduce</a>
     </nav>
@@ -364,6 +429,22 @@ footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--rule);
     </div>
     <div class="timeline" aria-hidden="true"><div class="tl" id="tl"></div></div>
     <div class="phases" id="phases"></div>
+  </section>
+
+  <section id="log">
+    <div class="col stack">
+      <span class="eyebrow">Experiment log · {{n_done}} of 50 complete</span>
+      <h2>Fifty pre-registered experiments</h2>
+      <p>After the pilot I wrote down fifty harder questions about hacking at the verification boundary. Each one has a prediction and the result that would refute it, committed to the repository before any of them ran. Each verdict is computed in code from those criteria. Most run on the pilot's policy; the sequence-model and probe experiments use a small transformer that reads the whole program.</p>
+      <p>Refuted predictions are reported as prominently as supported ones. Several of the interesting results are refutations.</p>
+    </div>
+    <div class="tally" id="tally"></div>
+    <div class="matrix" id="matrix" aria-label="Verdict of every experiment, by theme"></div>
+    <div class="filters">
+      <div class="seg" role="group" aria-label="Filter by verdict" id="vfilter"></div>
+      <div class="seg" role="group" aria-label="Filter by family" id="ffilter"></div>
+    </div>
+    <div class="xgrid" id="xgrid"></div>
   </section>
 
   <section id="how">
@@ -635,8 +716,125 @@ function roadmap() {
     </article>`).join("");
 }
 
-function drawAll() { drawCurves(); drawMix(); drawAudit(); drawHorizon(); }
-findings(); roadmap(); drawAll();
+
+/* ---------- experiment log ---------- */
+const XLOG = /*__XLOG__*/null;
+const THEME_TAG = { "hack-dynamics": "ver-1", "audits": "ver-2", "reward-design": "ver-3", "reward-models": "ver-4",
+  "sequence-models": "mod-1", "monitors": "mod-2", "long-horizon": "lh-1", "multi-agent": "lh-2", "evals": "ev-1" };
+const VERDICT = { supported: ["✓", "Supported"], refuted: ["✗", "Refuted"], mixed: ["~", "Mixed"], pending: ["…", "Pending"] };
+const FAMILIES = [["all", "All families"], ["verification", "Verification"], ["models", "Models"], ["long-horizon", "Long horizons"], ["evaluation", "Evaluation"]];
+let vSel = "all", fSel = "all";
+const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const vOf = e => (e.result && e.result.verdict) || "pending";
+function niceMax(v) { if (v <= 0) return 1; const p = Math.pow(10, Math.floor(Math.log10(v))); for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= v) return m * p; return 10 * p; }
+function xchart(target, ch) {
+  const W = 420, H = 190, m = { l: 44, r: 10, t: 10, b: 36 };
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": `${ch.y_label} by ${ch.x_label}` }, target);
+  const all = ch.series.flatMap(s => s.y.map((v, i) => v + ((s.err && s.err[i]) || 0)));
+  const lo = Math.min(0, ...ch.series.flatMap(s => s.y));
+  const hi = ch.y_max != null ? Math.max(ch.y_max, ...all) : niceMax(Math.max(...all, 1e-9));
+  const span = hi - lo || 1;
+  const y = v => m.t + (hi - v) / span * (H - m.t - m.b);
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map(f => lo + f * span);
+  const fmtT = v => (Math.abs(span) <= 1.5 && ch.y_max === 1 ? `${Math.round(v * 100)}%` : (Math.abs(v) >= 100 ? v.toFixed(0) : +v.toFixed(2)));
+  for (const v of ticks) {
+    el("line", { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), class: "grid" }, svg);
+    el("text", { x: m.l - 6, y: y(v) + 3, "text-anchor": "end" }, svg).textContent = fmtT(v);
+  }
+  if (lo < 0) el("line", { x1: m.l, x2: W - m.r, y1: y(0), y2: y(0), stroke: css("--ink-3"), "stroke-width": 1 }, svg);
+  const n = ch.x.length, iw = W - m.l - m.r;
+  const showEvery = Math.ceil(n / 8);
+  const chartEl = target;
+  const tip = (cx, cy, html) => showTip(chartEl, svg, cx, cy, html);
+  if (ch.kind === "bar") {
+    const S = ch.series.length, band = iw / n, bw = Math.min(34, (band - 8) / S);
+    ch.x.forEach((xv, i) => {
+      if (i % showEvery === 0 || n <= 8) el("text", { x: m.l + band * (i + 0.5), y: H - 20, "text-anchor": "middle" }, svg).textContent = xv;
+      ch.series.forEach((s, j) => {
+        const v = s.y[i]; if (v == null) return;
+        const x0 = m.l + band * (i + 0.5) - (S * bw) / 2 + j * bw + 1;
+        const top = y(Math.max(v, 0)), h = Math.max(1, Math.abs(y(v) - y(0)));
+        const r = el("rect", { x: x0, y: top, width: bw - 2, height: h, rx: 3, fill: css(`--c-${j + 1}`) }, svg);
+        if (s.err && s.err[i] > 0.004) el("line", { x1: x0 + bw / 2 - 1, x2: x0 + bw / 2 - 1, y1: y(v + s.err[i]), y2: y(Math.max(lo, v - s.err[i])), stroke: css("--ink-2"), "stroke-width": 1.2 }, svg);
+        r.addEventListener("pointerenter", () => tip(x0 + bw / 2, top, `<b>${esc(s.name)}</b> · ${esc(xv)}<br>${+v.toFixed(3)}${s.err && s.err[i] ? ` ± ${+s.err[i].toFixed(3)}` : ""}`));
+        r.addEventListener("pointerleave", () => hideTip(chartEl));
+      });
+    });
+  } else {
+    const xp = i => m.l + 8 + i * (iw - 16) / Math.max(1, n - 1);
+    ch.x.forEach((xv, i) => { if (i % showEvery === 0 || i === n - 1) el("text", { x: xp(i), y: H - 20, "text-anchor": "middle" }, svg).textContent = xv; });
+    ch.series.forEach((s, j) => {
+      const c = css(`--c-${j + 1}`);
+      const pts = s.y.map((v, i) => v == null ? null : [xp(i), y(v)]).filter(Boolean);
+      el("polyline", { points: pts.map(p => p.join(",")).join(" "), fill: "none", stroke: c, "stroke-width": 2, "stroke-linejoin": "round" }, svg);
+      s.y.forEach((v, i) => {
+        if (v == null) return;
+        if (n <= 12) el("circle", { cx: xp(i), cy: y(v), r: 3.5, fill: c, stroke: css("--surface"), "stroke-width": 1.5 }, svg);
+        const h = el("circle", { cx: xp(i), cy: y(v), r: 9, fill: "transparent" }, svg);
+        h.addEventListener("pointerenter", () => tip(xp(i), y(v), `<b>${esc(s.name)}</b> · ${esc(xv)}<br>${+v.toFixed(3)}${s.err && s.err[i] ? ` ± ${+s.err[i].toFixed(3)}` : ""}`));
+        h.addEventListener("pointerleave", () => hideTip(chartEl));
+      });
+    });
+  }
+  el("text", { x: (W + m.l) / 2, y: H - 3, "text-anchor": "middle" }, svg).textContent = ch.x_label;
+}
+function renderLog() {
+  if (!XLOG) return;
+  const counts = { supported: 0, refuted: 0, mixed: 0, pending: 0 };
+  XLOG.forEach(e => counts[vOf(e)]++);
+  $("#tally").innerHTML = ["supported", "refuted", "mixed"].concat(counts.pending ? ["pending"] : [])
+    .map(k => `<div class="t"><b class="num">${counts[k]}</b><span><span class="pill ${k}"><i>${VERDICT[k][0]}</i>${VERDICT[k][1]}</span></span></div>`).join("");
+  const themes = [...new Set(XLOG.map(e => e.theme))];
+  $("#matrix").innerHTML = themes.map(t => {
+    const items = XLOG.filter(e => e.theme === t);
+    return `<div class="mrow"><span class="tag ${THEME_TAG[t]}">${esc(items[0].theme_name)}</span><div class="cells">${items.map(e =>
+      `<button type="button" class="cell ${vOf(e)}" data-id="${e.id}" title="${esc(e.id + " · " + e.title + " · " + VERDICT[vOf(e)][1])}" aria-label="${esc(e.id + ", " + e.title + ", " + VERDICT[vOf(e)][1])}">${e.id.slice(1)}</button>`).join("")}</div></div>`;
+  }).join("");
+  $("#matrix").onclick = ev => {
+    const b = ev.target.closest(".cell"); if (!b) return;
+    vSel = "all"; fSel = "all"; drawFilters(); drawCards();
+    const card = document.getElementById(`x-${b.dataset.id}`);
+    card.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+    card.classList.add("flash"); setTimeout(() => card.classList.remove("flash"), 1600);
+  };
+  drawFilters(); drawCards();
+}
+function drawFilters() {
+  const mk = (target, opts, sel, set) => {
+    target.replaceChildren();
+    for (const [k, label] of opts) {
+      const b = document.createElement("button"); b.type = "button"; b.textContent = label; b.setAttribute("aria-pressed", k === sel);
+      b.addEventListener("click", () => { set(k); drawFilters(); drawCards(); });
+      target.appendChild(b);
+    }
+  };
+  mk($("#vfilter"), [["all", "All verdicts"], ["supported", "Supported"], ["refuted", "Refuted"], ["mixed", "Mixed"]], vSel, k => vSel = k);
+  mk($("#ffilter"), FAMILIES, fSel, k => fSel = k);
+}
+function drawCards() {
+  if (!XLOG) return;
+  const grid = $("#xgrid"); grid.replaceChildren();
+  const shown = XLOG.filter(e => (vSel === "all" || vOf(e) === vSel) && (fSel === "all" || e.family === fSel));
+  if (!shown.length) { grid.innerHTML = `<p class="note">No experiments match these filters.</p>`; return; }
+  for (const e of shown) {
+    const v = vOf(e), r = e.result || {};
+    const card = document.createElement("article");
+    card.className = "xcard"; card.id = `x-${e.id}`;
+    card.innerHTML = `
+      <div class="xhead"><div class="idt"><span class="xid">${e.id}<span class="tag ${THEME_TAG[e.theme]}">${esc(e.theme_name)}</span></span><h3>${esc(e.title)}</h3></div>
+        <span class="pill ${v}"><i>${VERDICT[v][0]}</i>${VERDICT[v][1]}</span></div>
+      <p class="xq">${esc(e.question)}</p>
+      <dl class="xpred"><dt>Predicted</dt><dd>${esc(e.hypothesis)}</dd><dt>Refuted if</dt><dd>${esc(e.kill)}</dd></dl>
+      ${r.result ? `<p class="xres">${esc(r.result)}</p>` : `<p class="xres">Not run yet.</p>`}
+      ${r.chart ? `<div class="xlegend">${r.chart.series.map((s, j) => `<span><i style="background:var(--c-${j + 1})"></i>${esc(s.name)}</span>`).join("")}</div><div class="xchart chart"></div>` : ""}
+      <details class="design"><summary>Design${r.notes ? " and notes" : ""}</summary><p>${esc(e.design)}</p>${r.notes ? `<p>${esc(r.notes)}</p>` : ""}</details>
+      ${r.seeds ? `<span class="xmeta">${r.seeds} seeds${r.runtime_s ? ` · ${Math.round(r.runtime_s / 60)} CPU-min` : ""}</span>` : ""}`;
+    grid.appendChild(card);
+    if (r.chart) xchart(card.querySelector(".xchart"), r.chart);
+  }
+}
+function drawAll() { drawCurves(); drawMix(); drawAudit(); drawHorizon(); drawCards(); }
+findings(); roadmap(); renderLog(); drawAll();
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawAll);
 new MutationObserver(drawAll).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 </script>
