@@ -61,7 +61,7 @@ def main():
         name, family = THEMES[e["theme"]]
         xlog.append({**e, "theme_name": name, "family": family,
                      "result": json.loads(path.read_text()) if path.exists() else None})
-    keys["n_done"] = str(sum(x["result"] is not None for x in xlog))
+    keys["n_done"] = str(sum(x["result"] is not None and x["result"]["verdict"] != "pending" for x in xlog))
     html = TEMPLATE.read_text()
     html = html.replace("/*__XLOG__*/null", json.dumps(xlog, separators=(",", ":")))
     html = html.replace("/*__DATA__*/null", json.dumps(runs, separators=(",", ":")))

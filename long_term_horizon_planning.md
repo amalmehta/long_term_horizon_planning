@@ -75,9 +75,24 @@ Decided without asking:
 - The "About me" paragraph uses only facts from the brief's background section.
 - README, docs/INSTRUCTIONS.md and docs/FILE-STRUCTURE.md written now so the folder is ready if it goes on GitHub.
 
+Experiment log (2026-10-20), asked and answered:
+- "50 more technically difficult things" = 50 research experiments, each pre-registered (hypothesis + kill criterion committed before any run), verdict computed in code.
+- Sequence-model questions use a tiny PyTorch transformer (torch 2.2.2, the last Intel-Mac build; pins numpy < 2).
+- Results go into a new Experiment Log section on the same site and artifact link.
+- Commits go to a local `experiments` branch; nothing pushed.
+- Shrink the transformer experiments under machine load: 2 seeds, 600 GRPO steps, 1,000-program eval.
+- Drop E40/E41 (40-step runs) for now; they show as deferred.
+
+Experiment log, decided without asking:
+- E08: the registry calls 5% the default demonstrator hack share; it is actually 10%. Ran 0/5/10/20% and judged against 5%.
+- E09: KL penalty off for RL from scratch (a KL anchor to a random policy would pull towards uniform).
+- E32: the transformer subagent hand-set a "mixed" verdict; reverted to the mechanical verdict ("supported") with the caveat in the result text, to keep every verdict mechanical.
+- Result sentences for E10, E21, E24, E27, E28 and E44 extended to say what actually happened (e.g. reward-model collapse), with verdicts unchanged.
+
 CHANGELOG:
 
 - 2026-10-09 — created
+- 2026-10-20 — added the experiment log: 50 pre-registered experiments (48 run, 2 deferred), new Experiment Log section on the site
 - 2026-10-09 — built: Patch World pilot (pilot/), results, proposal website (site/), docs; assumptions recorded above
 - 2026-09-15 — added meta-instruction: built-out applications include a small feedback tab
 - 2026-09-15 — added meta-instruction: no "Claude" attribution in commits, PRs, or branches
